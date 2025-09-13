@@ -37,6 +37,11 @@ BACKUP_PASSWORD=        # Optional: password for 7z encryption
 BACKUP_TIME=00:00       # Daily backup time in UTC (HH:MM format)
 ```
 
+### Quick Deploy
+Click the button below to deploy directly to Railway:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/e-ywUS?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
 ---
 
 ## ⏰ Railway Cron Jobs
