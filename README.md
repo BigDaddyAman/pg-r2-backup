@@ -1,6 +1,6 @@
-# PostgreSQL Backup Bot for Railway
+# Postgres-to-R2 Backup
 
-A lightweight automation bot that creates scheduled PostgreSQL backups and securely uploads them to **Cloudflare R2 object storage**.  
+A lightweight automation service that creates scheduled PostgreSQL backups and securely uploads them to **Cloudflare R2 object storage**.  
 Designed for **Railway deployments**, with built-in support for Docker and cron scheduling.
 
 ---
