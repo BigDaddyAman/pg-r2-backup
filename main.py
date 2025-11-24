@@ -115,6 +115,10 @@ def run_backup():
     # --------------------------
     # Upload to R2
     # --------------------------
+    if os.path.exists(compressed_file):
+        size = os.path.getsize(compressed_file)
+        log(f"[INFO] Final backup size: {size/1024/1024:.2f} MB")
+        
     try:
         client = boto3.client(
             's3',
