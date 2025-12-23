@@ -14,7 +14,8 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - 🔗 **Flexible Database URLs** — supports private and public PostgreSQL URLs  
 - ⚡ **Optimized Performance** — parallel pg_dump and multipart R2 uploads  
 - 🐳 **Docker Ready** — portable, lightweight container  
-- 🚀 **Railway Template First** — no fork required for normal usage  
+- 🚀 **Railway Template First** — no fork required for normal usage 
+- ⚡ **Optimized Performance** — efficient custom-format dumps and multipart R2 uploads
 
 ---
 
@@ -39,7 +40,6 @@ USE_PUBLIC_URL=false    # Set true to use DATABASE_PUBLIC_URL
 DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
 FILENAME_PREFIX=backup  # Backup filename prefix
 MAX_BACKUPS=7           # Number of backups to retain
-PG_DUMP_JOBS=1          # Optional: parallel pg_dump jobs (use 2–4 for 1–2GB DBs)
 
 R2_ACCESS_KEY=          # Cloudflare R2 access key
 R2_SECRET_KEY=          # Cloudflare R2 secret key
@@ -49,29 +49,6 @@ R2_ENDPOINT=            # R2 endpoint URL
 BACKUP_PASSWORD=        # Optional: enables 7z encryption
 BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
 ```
-
----
-
-## ⚡ Performance Optimization (Optional)
-
-For larger databases (≈1–2 GB), you can significantly speed up backups by enabling
-parallel PostgreSQL dumps.
-
-### Parallel pg_dump
-
-Set the number of parallel jobs:
-
-```env
-PG_DUMP_JOBS=4
-```
-
-**Notes**
-- Only applies to `dump`, `custom`, or `tar` formats
-- Default is `1` (safe for all users)
-- Recommended values: `2–4`
-- Higher values may overload small databases
-
-This feature is **fully optional** and disabled by default.
 
 ---
 

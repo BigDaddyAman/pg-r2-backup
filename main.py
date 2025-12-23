@@ -12,7 +12,7 @@ import shutil
 
 load_dotenv()
 
-##Env
+## ENV
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASE_PUBLIC_URL = os.environ.get("DATABASE_PUBLIC_URL")
@@ -27,41 +27,35 @@ DUMP_FORMAT = os.environ.get("DUMP_FORMAT", "dump")
 BACKUP_PASSWORD = os.environ.get("BACKUP_PASSWORD")
 USE_PUBLIC_URL = os.environ.get("USE_PUBLIC_URL", "false").lower() == "true"
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "00:00")
-PG_DUMP_JOBS = int(os.environ.get("PG_DUMP_JOBS", "1"))
 
 def log(msg):
     print(msg, flush=True)
 
+## Validate BACKUP_TIME
 try:
     hour, minute = BACKUP_TIME.split(":")
     if not (0 <= int(hour) <= 23 and 0 <= int(minute) <= 59):
-        log("[WARNING] Invalid BACKUP_TIME format. Using default: 00:00")
-        BACKUP_TIME = "00:00"
+        raise ValueError
 except ValueError:
     log("[WARNING] Invalid BACKUP_TIME format. Using default: 00:00")
     BACKUP_TIME = "00:00"
 
 def get_database_url():
-    """Get the appropriate database URL based on configuration"""
     if USE_PUBLIC_URL:
         if not DATABASE_PUBLIC_URL:
             raise ValueError("[ERROR] DATABASE_PUBLIC_URL not set but USE_PUBLIC_URL=true!")
         return DATABASE_PUBLIC_URL
-    
+
     if not DATABASE_URL:
         raise ValueError("[ERROR] DATABASE_URL not set!")
     return DATABASE_URL
 
 def run_backup():
-    """Main backup function that handles the entire backup process"""
     if shutil.which("pg_dump") is None:
         log("[ERROR] pg_dump not found. Install postgresql-client.")
         return
 
     database_url = get_database_url()
-    url = urlparse(database_url)
-    db_name = url.path[1:]
-
     log(f"[INFO] Using {'public' if USE_PUBLIC_URL else 'private'} database URL")
 
     format_map = {
@@ -73,7 +67,7 @@ def run_backup():
     }
     pg_format, ext = format_map.get(DUMP_FORMAT.lower(), ("c", "dump"))
 
-    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     backup_file = f"{FILENAME_PREFIX}_{timestamp}.{ext}"
 
     compressed_file = (
@@ -82,9 +76,7 @@ def run_backup():
 
     compressed_file_r2 = f"{BACKUP_PREFIX}{compressed_file}"
 
-    # --------------------------
-    # Create backup
-    # --------------------------
+    ## Create backup
     try:
         log(f"[INFO] Creating backup {backup_file}")
 
@@ -97,17 +89,11 @@ def run_backup():
             "-f", backup_file
         ]
 
-        if pg_format in ("c", "t") and PG_DUMP_JOBS > 1:
-            dump_cmd.insert(-2, f"--jobs={PG_DUMP_JOBS}")
-            log(f"[INFO] Using parallel pg_dump with {PG_DUMP_JOBS} jobs")
-
         subprocess.run(dump_cmd, check=True)
 
         if BACKUP_PASSWORD:
             log("[INFO] Encrypting backup with 7z...")
-            with py7zr.SevenZipFile(
-                compressed_file, "w", password=BACKUP_PASSWORD
-            ) as archive:
+            with py7zr.SevenZipFile(compressed_file, "w", password=BACKUP_PASSWORD) as archive:
                 archive.write(backup_file)
             log("[SUCCESS] Backup encrypted successfully")
         else:
@@ -117,9 +103,6 @@ def run_backup():
 
     except subprocess.CalledProcessError as e:
         log(f"[ERROR] Backup creation failed: {e}")
-        return
-    except Exception as e:
-        log(f"[ERROR] Compression/encryption failed: {e}")
         return
     finally:
         if os.path.exists(backup_file):
@@ -175,7 +158,6 @@ def run_backup():
 
     except Exception as e:
         log(f"[ERROR] R2 operation failed: {e}")
-        return
     finally:
         if os.path.exists(compressed_file):
             os.remove(compressed_file)
@@ -183,11 +165,11 @@ def run_backup():
 if __name__ == "__main__":
     log("[INFO] Starting backup scheduler...")
     log(f"[INFO] Scheduled backup time: {BACKUP_TIME} UTC")
-    
+
     schedule.every().day.at(BACKUP_TIME).do(run_backup)
-    
+
     run_backup()
-    
+
     while True:
         schedule.run_pending()
         time.sleep(60)
