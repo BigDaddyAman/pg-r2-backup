@@ -27,6 +27,7 @@ DUMP_FORMAT = os.environ.get("DUMP_FORMAT", "dump")
 BACKUP_PASSWORD = os.environ.get("BACKUP_PASSWORD")
 USE_PUBLIC_URL = os.environ.get("USE_PUBLIC_URL", "false").lower() == "true"
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "00:00")
+PG_DUMP_JOBS = int(os.environ.get("PG_DUMP_JOBS", "1"))
 
 def log(msg):
     print(msg, flush=True)
@@ -75,24 +76,38 @@ def run_backup():
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     backup_file = f"{FILENAME_PREFIX}_{timestamp}.{ext}"
 
-    if BACKUP_PASSWORD:
-        compressed_file = f"{backup_file}.7z"
-    else:
-        compressed_file = f"{backup_file}.gz"
+    compressed_file = (
+        f"{backup_file}.7z" if BACKUP_PASSWORD else f"{backup_file}.gz"
+    )
 
     compressed_file_r2 = f"{BACKUP_PREFIX}{compressed_file}"
 
-    ##Create backup
+    # --------------------------
+    # Create backup
+    # --------------------------
     try:
         log(f"[INFO] Creating backup {backup_file}")
-        subprocess.run(
-            ["pg_dump", f"--dbname={database_url}", "-F", pg_format, "-f", backup_file],
-            check=True
-        )
+
+        dump_cmd = [
+            "pg_dump",
+            f"--dbname={database_url}",
+            "-F", pg_format,
+            "--no-owner",
+            "--no-acl",
+            "-f", backup_file
+        ]
+
+        if pg_format in ("c", "t") and PG_DUMP_JOBS > 1:
+            dump_cmd.insert(-2, f"--jobs={PG_DUMP_JOBS}")
+            log(f"[INFO] Using parallel pg_dump with {PG_DUMP_JOBS} jobs")
+
+        subprocess.run(dump_cmd, check=True)
 
         if BACKUP_PASSWORD:
             log("[INFO] Encrypting backup with 7z...")
-            with py7zr.SevenZipFile(compressed_file, 'w', password=BACKUP_PASSWORD) as archive:
+            with py7zr.SevenZipFile(
+                compressed_file, "w", password=BACKUP_PASSWORD
+            ) as archive:
                 archive.write(backup_file)
             log("[SUCCESS] Backup encrypted successfully")
         else:
@@ -113,11 +128,11 @@ def run_backup():
     ## Upload to R2
     if os.path.exists(compressed_file):
         size = os.path.getsize(compressed_file)
-        log(f"[INFO] Final backup size: {size/1024/1024:.2f} MB")
-        
+        log(f"[INFO] Final backup size: {size / 1024 / 1024:.2f} MB")
+
     try:
         client = boto3.client(
-            's3',
+            "s3",
             endpoint_url=R2_ENDPOINT,
             aws_access_key_id=R2_ACCESS_KEY,
             aws_secret_access_key=R2_SECRET_KEY
@@ -139,11 +154,23 @@ def run_backup():
 
         log(f"[SUCCESS] Backup uploaded: {compressed_file_r2}")
 
-        objects = client.list_objects_v2(Bucket=R2_BUCKET_NAME, Prefix=BACKUP_PREFIX)
-        if 'Contents' in objects:
-            backups = sorted(objects['Contents'], key=lambda x: x['LastModified'], reverse=True)
+        objects = client.list_objects_v2(
+            Bucket=R2_BUCKET_NAME,
+            Prefix=BACKUP_PREFIX
+        )
+
+        if "Contents" in objects:
+            backups = sorted(
+                objects["Contents"],
+                key=lambda x: x["LastModified"],
+                reverse=True
+            )
+
             for obj in backups[MAX_BACKUPS:]:
-                client.delete_object(Bucket=R2_BUCKET_NAME, Key=obj['Key'])
+                client.delete_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=obj["Key"]
+                )
                 log(f"[INFO] Deleted old backup: {obj['Key']}")
 
     except Exception as e:

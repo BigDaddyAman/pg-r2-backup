@@ -1,74 +1,120 @@
 # Postgres-to-R2 Backup
 
 A lightweight automation service that creates scheduled PostgreSQL backups and securely uploads them to **Cloudflare R2 object storage**.  
-Designed for **Railway deployments**, with built-in support for Docker and cron scheduling.
+Designed specifically as a **Railway deployment template**, with built-in support for Docker and cron scheduling.
 
 ---
 
 ## ✨ Features
 
-- 📦 **Automated Backups** — scheduled daily or hourly backups of your PostgreSQL database  
-- 🔐 **Optional Encryption** — compress with gzip or encrypt with 7z and password-protection  
-- ☁️ **Cloudflare R2 Integration** — seamless upload to your R2 bucket  
-- 🧹 **Retention Policy** — keep a fixed number of backups, auto-clean old ones  
-- 🔗 **Flexible Database URL** — supports both private and public PostgreSQL URLs  
-- 🐳 **Docker Ready** — lightweight container for portable deployment  
+- 📦 **Automated Backups** — scheduled daily or hourly PostgreSQL backups  
+- 🔐 **Optional Encryption** — gzip compression or 7z encryption with password  
+- ☁️ **Cloudflare R2 Integration** — seamless S3-compatible uploads  
+- 🧹 **Retention Policy** — automatically delete old backups  
+- 🔗 **Flexible Database URLs** — supports private and public PostgreSQL URLs  
+- ⚡ **Optimized Performance** — parallel pg_dump and multipart R2 uploads  
+- 🐳 **Docker Ready** — portable, lightweight container  
+- 🚀 **Railway Template First** — no fork required for normal usage  
 
 ---
 
-## 🚀 Deployment on Railway
+## 🚀 Deployment on Railway (Recommended)
 
-1. **Fork this repository**  
-2. **Create a new project** on [Railway](https://railway.app/)  
-3. **Add environment variables** in Railway dashboard:
-
-```env
-DATABASE_URL=           # Your PostgreSQL database URL (private)
-DATABASE_PUBLIC_URL=    # Public database URL (optional)
-USE_PUBLIC_URL=false    # Set to true to use DATABASE_PUBLIC_URL
-DUMP_FORMAT=dump        # Options: sql, plain, dump, custom, tar
-FILENAME_PREFIX=backup  # Prefix for backup files
-MAX_BACKUPS=7           # Number of backups to keep
-R2_ACCESS_KEY=          # Cloudflare R2 access key
-R2_SECRET_KEY=          # Cloudflare R2 secret key
-R2_BUCKET_NAME=         # R2 bucket name
-R2_ENDPOINT=            # R2 endpoint URL
-BACKUP_PASSWORD=        # Optional: password for 7z encryption
-BACKUP_TIME=00:00       # Daily backup time in UTC (HH:MM format)
-```
-
-### Quick Deploy
-Click the button below to deploy directly to Railway:
+1. Click the **Deploy on Railway** button below  
+2. Railway will create a new project using the latest version of this repository  
+3. Add the required environment variables in the Railway dashboard  
+4. (Optional) Configure a cron job for your desired backup schedule  
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/e-ywUS?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ---
 
+## 🔧 Environment Variables
+
+```env
+DATABASE_URL=           # PostgreSQL database URL (private)
+DATABASE_PUBLIC_URL=    # Public PostgreSQL URL (optional)
+USE_PUBLIC_URL=false    # Set true to use DATABASE_PUBLIC_URL
+
+DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
+FILENAME_PREFIX=backup  # Backup filename prefix
+MAX_BACKUPS=7           # Number of backups to retain
+PG_DUMP_JOBS=1          # Optional: parallel pg_dump jobs (use 2–4 for 1–2GB DBs)
+
+R2_ACCESS_KEY=          # Cloudflare R2 access key
+R2_SECRET_KEY=          # Cloudflare R2 secret key
+R2_BUCKET_NAME=         # R2 bucket name
+R2_ENDPOINT=            # R2 endpoint URL
+
+BACKUP_PASSWORD=        # Optional: enables 7z encryption
+BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
+```
+
+---
+
+## ⚡ Performance Optimization (Optional)
+
+For larger databases (≈1–2 GB), you can significantly speed up backups by enabling
+parallel PostgreSQL dumps.
+
+### Parallel pg_dump
+
+Set the number of parallel jobs:
+
+```env
+PG_DUMP_JOBS=4
+```
+
+**Notes**
+- Only applies to `dump`, `custom`, or `tar` formats
+- Default is `1` (safe for all users)
+- Recommended values: `2–4`
+- Higher values may overload small databases
+
+This feature is **fully optional** and disabled by default.
+
+---
+
 ## ⏰ Railway Cron Jobs
 
-You can configure the backup schedule using Railway's built-in cron jobs in the dashboard:
+You can configure the backup schedule using **Railway Cron Jobs**:
 
-1. Go to your project settings
-2. Navigate to **Deployments** > **Cron**
-3. Add a new cron job pointing to your service
+1. Open your Railway project  
+2. Go to **Deployments → Cron**  
+3. Add a cron job targeting this service  
 
-Common cron expressions:
+### Common Cron Expressions
 
 | Schedule | Cron Expression | Description |
-|----------|----------------|-------------|
-| Hourly | `0 * * * *` | Run once every hour |
-| Daily (midnight) | `0 0 * * *` | Run once per day at midnight |
-| Twice Daily | `0 */12 * * *` | Run every 12 hours |
-| Weekly | `0 0 * * 0` | Run once per week (Sunday) |
-| Monthly | `0 0 1 * *` | Run once per month |
+|--------|----------------|------------|
+| Hourly | `0 * * * *` | Every hour |
+| Daily | `0 0 * * *` | Once per day (UTC midnight) |
+| Twice Daily | `0 */12 * * *` | Every 12 hours |
+| Weekly | `0 0 * * 0` | Every Sunday |
+| Monthly | `0 0 1 * *` | First day of the month |
 
-Pro Tips:
-- Use [crontab.guru](https://crontab.guru) to verify your cron expressions
-- All times are in UTC
-- Configure backup retention (`MAX_BACKUPS`) according to your schedule
-````
+**Tips**
+- All cron times are **UTC**
+- Use https://crontab.guru to validate expressions
+- Adjust `MAX_BACKUPS` to match your schedule
 
-📜 License
+---
 
-This project is open source under the MIT License.
+## 🛠 Development & Contributions
+
+Fork this repository **only if you plan to**:
+
+- Modify the backup logic
+- Add features or integrations
+- Submit pull requests
+- Run locally for development
+
+For normal usage, deploying via the **Railway template** is recommended.
+
+---
+
+## 📜 License
+
+This project is open source under the **MIT License**.
+
 You are free to use, modify, and distribute it with attribution.
