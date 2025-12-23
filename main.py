@@ -2,6 +2,7 @@ import os
 import subprocess
 import boto3
 from datetime import datetime, timezone
+from boto3.s3.transfer import TransferConfig
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import time
@@ -11,9 +12,8 @@ import shutil
 
 load_dotenv()
 
-# --------------------------
-# Environment variables
-# --------------------------
+##Env
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASE_PUBLIC_URL = os.environ.get("DATABASE_PUBLIC_URL")
 R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY")
@@ -82,9 +82,7 @@ def run_backup():
 
     compressed_file_r2 = f"{BACKUP_PREFIX}{compressed_file}"
 
-    # --------------------------
-    # Create backup
-    # --------------------------
+    ##Create backup
     try:
         log(f"[INFO] Creating backup {backup_file}")
         subprocess.run(
@@ -112,9 +110,7 @@ def run_backup():
         if os.path.exists(backup_file):
             os.remove(backup_file)
 
-    # --------------------------
-    # Upload to R2
-    # --------------------------
+    ## Upload to R2
     if os.path.exists(compressed_file):
         size = os.path.getsize(compressed_file)
         log(f"[INFO] Final backup size: {size/1024/1024:.2f} MB")
@@ -127,8 +123,20 @@ def run_backup():
             aws_secret_access_key=R2_SECRET_KEY
         )
 
-        with open(compressed_file, "rb") as f:
-            client.upload_fileobj(f, R2_BUCKET_NAME, compressed_file_r2)
+        config = TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            multipart_chunksize=8 * 1024 * 1024,
+            max_concurrency=4,
+            use_threads=True
+        )
+
+        client.upload_file(
+            compressed_file,
+            R2_BUCKET_NAME,
+            compressed_file_r2,
+            Config=config
+        )
+
         log(f"[SUCCESS] Backup uploaded: {compressed_file_r2}")
 
         objects = client.list_objects_v2(Bucket=R2_BUCKET_NAME, Prefix=BACKUP_PREFIX)
