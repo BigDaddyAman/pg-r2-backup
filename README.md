@@ -26,7 +26,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 3. Add the required environment variables in the Railway dashboard  
 4. (Optional) Configure a cron job for your desired backup schedule  
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/e-ywUS?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/postgres-to-r2-backup?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ---
 
