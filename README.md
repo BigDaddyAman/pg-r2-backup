@@ -111,9 +111,31 @@ python main.py
 ```bash
 docker build -t postgres-to-r2-backup .
 docker run --env-file .env postgres-to-r2-backup
+
+> Ensure the container is allowed to run continuously when not using an external cron scheduler.
 ```
 
 All scheduling uses **UTC by default** to ensure consistent behavior across platforms.
+
+---
+
+## 🔐 Security
+
+- **Do not expose PostgreSQL directly to the public internet.**  
+  If your database is not on a private network, use a secure tunnel instead.
+
+- **Recommended: Cloudflare Tunnel**  
+  When using a public database URL, it is strongly recommended to connect via a secure tunnel such as **Cloudflare Tunnel** rather than opening database ports.
+
+- **Protect credentials**  
+  Store all secrets (database URLs, R2 keys, encryption passwords) using environment variables.  
+  Never commit `.env` files to version control.
+
+- **Encrypted backups (optional)**  
+  Set `BACKUP_PASSWORD` to enable encrypted backups using 7z before uploading to Cloudflare R2.
+
+- **Least privilege access**  
+  Use a PostgreSQL user with read-only access where possible, and restrict R2 credentials to the required bucket only.
 
 ---
 
