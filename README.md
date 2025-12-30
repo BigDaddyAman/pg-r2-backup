@@ -14,8 +14,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - 🔗 **Flexible Database URLs** — supports private and public PostgreSQL URLs  
 - ⚡ **Optimized Performance** — parallel pg_dump and multipart R2 uploads  
 - 🐳 **Docker Ready** — portable, lightweight container  
-- 🚀 **Railway Template First** — no fork required for normal usage 
-- ⚡ **Optimized Performance** — efficient custom-format dumps and multipart R2 uploads
+- 🚀 **Railway Template First** — no fork required for normal usage  
 
 ---
 
@@ -26,7 +25,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 3. Add the required environment variables in the Railway dashboard  
 4. (Optional) Configure a cron job for your desired backup schedule  
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/postgres-to-r2-backup?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/e-ywUS?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ---
 
@@ -77,6 +76,47 @@ You can configure the backup schedule using **Railway Cron Jobs**:
 
 ---
 
+## 🖥️ Running Locally or on Other Platforms
+
+It can run on **any platform** that supports:
+- Python 3.9+
+- `pg_dump` (PostgreSQL client tools)
+- Environment variables
+- Long-running background processes or cron
+
+### Supported Environments
+
+- Local machine (Linux / macOS / Windows*)
+- VPS (Netcup, Hetzner, DigitalOcean, etc.)
+- Docker containers
+- Other PaaS providers (Heroku, Fly.io, Render, etc.)
+
+> *Windows is supported when `pg_dump` is installed and available in PATH.*
+
+### Local Requirements
+
+- Python 3.9+
+- PostgreSQL client tools (`pg_dump`)
+- pip
+
+### Run Manually (Local)
+
+```bash
+pip install -r requirements.txt
+python main.py
+```
+
+### Run with Docker (Optional)
+
+```bash
+docker build -t postgres-to-r2-backup .
+docker run --env-file .env postgres-to-r2-backup
+```
+
+All scheduling uses **UTC by default** to ensure consistent behavior across platforms.
+
+---
+
 ## 🛠 Development & Contributions
 
 Fork this repository **only if you plan to**:
@@ -85,8 +125,6 @@ Fork this repository **only if you plan to**:
 - Add features or integrations
 - Submit pull requests
 - Run locally for development
-
-For normal usage, deploying via the **Railway template** is recommended.
 
 ---
 
