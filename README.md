@@ -18,7 +18,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 
 ---
 
-## 🚀 Deployment on Railway (Recommended)
+## 🚀 Deployment on Railway 
 
 1. Click the **Deploy on Railway** button below  
 2. Railway will create a new project using the latest version of this repository  
