@@ -23,10 +23,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
 - 🐳 **Docker Ready** — portable, lightweight container  
 - 🚀 **Railway Template First** — no fork required for normal usage  
-<<<<<<< HEAD
-=======
 - 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
->>>>>>> 20e6dd1 (Update Docker, dependencies, S3 compatibility, and documentation)
 
 ---
 
@@ -122,12 +119,9 @@ It can run on **any platform** that supports:
 - Environment variables
 - Long-running background processes or cron
 
-<<<<<<< HEAD
-=======
 > Docker images use **Python 3.12** by default.  
 > Local execution supports **Python 3.9+**.
 
->>>>>>> 20e6dd1 (Update Docker, dependencies, S3 compatibility, and documentation)
 ### Supported Environments
 
 - Local machine (Linux / macOS / Windows*)
