@@ -1,9 +1,9 @@
 import os
 import subprocess
 import boto3
+from boto3.session import Config
 from datetime import datetime, timezone
 from boto3.s3.transfer import TransferConfig
-from urllib.parse import urlparse
 from dotenv import load_dotenv
 import time
 import schedule
@@ -27,6 +27,7 @@ DUMP_FORMAT = os.environ.get("DUMP_FORMAT", "dump")
 BACKUP_PASSWORD = os.environ.get("BACKUP_PASSWORD")
 USE_PUBLIC_URL = os.environ.get("USE_PUBLIC_URL", "false").lower() == "true"
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "00:00")
+S3_REGION = os.environ.get("S3_REGION", "us-east-1")
 
 def log(msg):
     print(msg, flush=True)
@@ -118,7 +119,11 @@ def run_backup():
             "s3",
             endpoint_url=R2_ENDPOINT,
             aws_access_key_id=R2_ACCESS_KEY,
-            aws_secret_access_key=R2_SECRET_KEY
+            aws_secret_access_key=R2_SECRET_KEY,
+            region_name=S3_REGION,
+            config=Config(
+                s3={"addressing_style": "path"}
+            )
         )
 
         config = TransferConfig(

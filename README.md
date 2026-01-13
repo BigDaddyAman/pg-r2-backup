@@ -1,6 +1,14 @@
-# Postgres-to-R2 Backup
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Storage](https://img.shields.io/badge/storage-S3--compatible-orange)
+![Database](https://img.shields.io/badge/database-PostgreSQL-336791)
+![Deploy](https://img.shields.io/badge/deploy-Railway-purple)
+![Docker](https://img.shields.io/badge/docker-supported-blue)
 
-A lightweight automation service that creates scheduled PostgreSQL backups and securely uploads them to **Cloudflare R2 object storage**.  
+# Postgres-to-R2 Backup (S3-Compatible)
+
+A lightweight automation service that creates scheduled PostgreSQL backups and securely uploads them to **S3-compatible object storage**
+such as **Cloudflare R2, AWS S3, Wasabi, Backblaze B2, or MinIO**.  
 Designed specifically as a **Railway deployment template**, with built-in support for Docker and cron scheduling.
 
 ---
@@ -9,12 +17,16 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 
 - 📦 **Automated Backups** — scheduled daily or hourly PostgreSQL backups  
 - 🔐 **Optional Encryption** — gzip compression or 7z encryption with password  
-- ☁️ **Cloudflare R2 Integration** — seamless S3-compatible uploads  
+- ☁️ **Cloudflare R2 Integration** — seamless S3-compatible storage support
 - 🧹 **Retention Policy** — automatically delete old backups  
 - 🔗 **Flexible Database URLs** — supports private and public PostgreSQL URLs  
-- ⚡ **Optimized Performance** — parallel pg_dump and multipart R2 uploads  
+- ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
 - 🐳 **Docker Ready** — portable, lightweight container  
 - 🚀 **Railway Template First** — no fork required for normal usage  
+<<<<<<< HEAD
+=======
+- 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
+>>>>>>> 20e6dd1 (Update Docker, dependencies, S3 compatibility, and documentation)
 
 ---
 
@@ -29,7 +41,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 
 ---
 
-## 🔧 Environment Variables
+## 🔧 Environment Variables (S3-Compatible)
 
 ```env
 DATABASE_URL=           # PostgreSQL database URL (private)
@@ -40,14 +52,40 @@ DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
 FILENAME_PREFIX=backup  # Backup filename prefix
 MAX_BACKUPS=7           # Number of backups to retain
 
-R2_ACCESS_KEY=          # Cloudflare R2 access key
-R2_SECRET_KEY=          # Cloudflare R2 secret key
-R2_BUCKET_NAME=         # R2 bucket name
-R2_ENDPOINT=            # R2 endpoint URL
+R2_ENDPOINT=            # S3 endpoint URL
+R2_BUCKET_NAME=         # Bucket name
+R2_ACCESS_KEY=          # Access key
+R2_SECRET_KEY=          # Secret key
+S3_REGION=us-east-1     # Required for AWS S3 (ignored by R2/MinIO)
 
 BACKUP_PASSWORD=        # Optional: enables 7z encryption
 BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
 ```
+
+> Variable names use `R2_*` for historical reasons, but **any S3-compatible provider** can be used by changing the endpoint and credentials.
+> For AWS S3 users: ensure `S3_REGION` matches your bucket’s region.
+
+---
+
+## ☁️ Supported S3-Compatible Providers
+
+This project uses the **standard AWS S3 API via boto3**, and works with:
+
+- Cloudflare R2 (recommended)
+- AWS S3
+- Wasabi
+- Backblaze B2 (S3 API)
+- MinIO (self-hosted)
+
+### Example Endpoints
+
+| Provider | Endpoint Example |
+|--------|------------------|
+| Cloudflare R2 | `https://<accountid>.r2.cloudflarestorage.com` |
+| AWS S3 | `https://s3.amazonaws.com` |
+| Wasabi | `https://s3.wasabisys.com` |
+| Backblaze B2 | `https://s3.us-west-004.backblazeb2.com` |
+| MinIO | `http://localhost:9000` |
 
 ---
 
@@ -84,6 +122,12 @@ It can run on **any platform** that supports:
 - Environment variables
 - Long-running background processes or cron
 
+<<<<<<< HEAD
+=======
+> Docker images use **Python 3.12** by default.  
+> Local execution supports **Python 3.9+**.
+
+>>>>>>> 20e6dd1 (Update Docker, dependencies, S3 compatibility, and documentation)
 ### Supported Environments
 
 - Local machine (Linux / macOS / Windows*)
@@ -108,14 +152,33 @@ python main.py
 
 ### Run with Docker (Optional)
 
+Build and run the image locally:
+
 ```bash
 docker build -t postgres-to-r2-backup .
 docker run --env-file .env postgres-to-r2-backup
-
-> Ensure the container is allowed to run continuously when not using an external cron scheduler.
 ```
 
-All scheduling uses **UTC by default** to ensure consistent behavior across platforms.
+> Ensure the container is allowed to run continuously when not using an external cron scheduler.
+
+> All scheduling uses **UTC** by default (e.g. Malaysia UTC+8 → set `BACKUP_TIME=16:00` for midnight).
+
+### Run from Prebuilt Docker Image
+
+If you downloaded a prebuilt Docker image archive (`.tar` or `.tar.gz`), you can run it without building locally:
+
+```bash
+# Extract the archive (if compressed)
+tar -xzf postgres-to-r2-backup_v1.0.0.tar.gz
+
+# Load the image into Docker
+docker load -i postgres-to-r2-backup_v1.0.0.tar
+
+# Run the container
+docker run --env-file .env postgres-to-r2-backup:v1.0.0
+```
+
+> Prebuilt images are architecture-specific (amd64 / arm64).
 
 ---
 
@@ -132,7 +195,7 @@ All scheduling uses **UTC by default** to ensure consistent behavior across plat
   Never commit `.env` files to version control.
 
 - **Encrypted backups (optional)**  
-  Set `BACKUP_PASSWORD` to enable encrypted backups using 7z before uploading to Cloudflare R2.
+  Set `BACKUP_PASSWORD` to enable encrypted backups using 7z before uploading to S3-compatible storage.
 
 - **Least privilege access**  
   Use a PostgreSQL user with read-only access where possible, and restrict R2 credentials to the required bucket only.
