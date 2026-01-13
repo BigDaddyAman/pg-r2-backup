@@ -1,0 +1,28 @@
+# Contributing to Postgres-to-R2 Backup
+
+Thanks for your interest in contributing 🎉  
+All contributions are welcome — bug reports, documentation improvements, and code changes.
+
+---
+
+## Getting Started
+
+1. Fork the repository
+2. Clone your fork locally
+3. Create a feature branch from `main`
+4. Submit a pull request against `main`
+
+---
+
+## Development
+
+### Requirements
+- Python 3.9+
+- PostgreSQL client tools (`pg_dump`)
+- pip
+- (Optional) Docker
+
+### Local Setup
+```bash
+pip install -r requirements.txt
+python main.py
