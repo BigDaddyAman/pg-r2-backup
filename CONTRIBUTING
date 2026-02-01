@@ -1,7 +1,7 @@
 # Contributing to Postgres-to-R2 Backup
 
 Thanks for your interest in contributing 🎉  
-All contributions are welcome — bug reports, documentation improvements, and code changes.
+All contributions are welcome — including bug reports, documentation improvements, and code changes.
 
 ---
 
@@ -11,6 +11,9 @@ All contributions are welcome — bug reports, documentation improvements, and c
 2. Clone your fork locally
 3. Create a feature branch from `main`
 4. Submit a pull request against `main`
+
+> `main` is considered stable and production ready.
+> Please open an issue before submitting new features or behavior changes.
 
 ---
 
