@@ -19,7 +19,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - 🔐 **Optional Encryption** — gzip compression or 7z encryption with password  
 - ☁️ **Cloudflare R2 Integration** — seamless S3-compatible storage support
 - 🧹 **Retention Policy** — automatically delete old backups  
-- 🔗 **Flexible Database URLs** — supports private and public PostgreSQL URLs  
+- 🔗 **Flexible Database URLs** — supports private and public PostgreSQL connection URLs
 - ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
 - 🐳 **Docker Ready** — portable, lightweight container  
 - 🚀 **Railway Template First** — no fork required for normal usage  
@@ -108,6 +108,9 @@ You can configure the backup schedule using **Railway Cron Jobs**:
 - All cron times are **UTC**
 - Use https://crontab.guru to validate expressions
 - Adjust `MAX_BACKUPS` to match your schedule
+
+> If you use Railway Cron Jobs, the service will start once per execution.
+> In this case, the internal scheduler is ignored after startup.
 
 ---
 
@@ -206,6 +209,12 @@ Fork this repository **only if you plan to**:
 - Run locally for development
 
 ---
+
+## ❓ FAQ
+
+**Why only DATABASE_URL?**  
+This matches how most modern platforms expose PostgreSQL credentials.  
+Support for separate DB variables may be added if there is demand.
 
 ## 📜 License
 
