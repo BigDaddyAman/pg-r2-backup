@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pg-r2-backup"
+version = "1.0.4"
+description = "PostgreSQL backup tool for Cloudflare R2 (S3 Compatuble)"
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "boto3",
+    "python-dotenv",
+    "schedule",
+    "py7zr"
+]
+
+[tool.setuptools]
+packages = ["cli"]
+py-modules = ["main"]
+
+[project.scripts]
+pg-r2-backup = "cli.cli:main"
