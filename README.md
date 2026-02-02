@@ -166,16 +166,87 @@ If you downloaded a prebuilt Docker image archive (`.tar` or `.tar.gz`), you can
 
 ```bash
 # Extract the archive (if compressed)
-tar -xzf postgres-to-r2-backup_v1.0.0.tar.gz
+tar -xzf postgres-to-r2-backup_v1.0.4.tar.gz
 
 # Load the image into Docker
-docker load -i postgres-to-r2-backup_v1.0.0.tar
+docker load -i postgres-to-r2-backup_v1.0.4.tar
 
 # Run the container
-docker run --env-file .env postgres-to-r2-backup:v1.0.0
+docker run --env-file .env postgres-to-r2-backup:v1.0.4
 ```
 
 > Prebuilt images are architecture-specific (amd64 / arm64).
+
+---
+
+## 🧰 Using the CLI (Global Installation)
+
+This project can also be used as a standalone CLI tool, installable via pip, in addition to running as a Railway or Docker service.
+
+### Install via pip
+
+```bash
+pip install pg-r2-backup
+```
+
+### Requirements
+
+- Python 3.9+
+- PostgreSQL client tools (`pg_dump`) installed and available in PATH
+
+### Quick Start (CLI)
+
+```bash
+mkdir backups
+cd backups
+
+pg-r2-backup init      # creates .env from .env.example
+pg-r2-backup doctor    # checks environment and dependencies
+pg-r2-backup run       # runs a backup immediately
+```
+
+### CLI Commands
+
+```bash
+pg-r2-backup run            # Run backup immediately
+pg-r2-backup doctor         # Check environment & dependencies
+pg-r2-backup config show    # Show current configuration
+pg-r2-backup init           # Create .env from .env.example
+pg-r2-backup schedule       # Show scheduling examples
+pg-r2-backup --version
+```
+
+### Environment Variable Resolution (CLI)
+
+When running via the CLI, environment variables are resolved in the following order:
+
+1. A `.env` file in the current working directory (or parent directory)
+2. System environment variables
+
+This allows different folders to maintain separate backup configurations.
+
+### Scheduling Backups (CLI)
+
+The CLI does not run a background scheduler. Use your operating system or platform scheduler instead.
+
+**Linux / macOS (cron)**
+
+```bash
+0 0 * * * pg-r2-backup run
+```
+
+**Windows (Task Scheduler)**
+
+- Program: `pg-r2-backup`
+- Arguments: `run`
+- Start in: folder containing `.env` (working directory)
+
+**Railway / Docker**
+
+Use the platform's built-in scheduler (recommended).
+
+💡 **Tip**  
+Run `pg-r2-backup schedule` at any time to see scheduling examples.
 
 ---
 

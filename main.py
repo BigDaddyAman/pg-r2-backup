@@ -4,13 +4,14 @@ import boto3
 from boto3.session import Config
 from datetime import datetime, timezone
 from boto3.s3.transfer import TransferConfig
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import time
 import schedule
 import py7zr
 import shutil
+import gzip
 
-load_dotenv()
+load_dotenv(find_dotenv(usecwd=True), override=True)
 
 ## ENV
 
@@ -50,6 +51,13 @@ def get_database_url():
     if not DATABASE_URL:
         raise ValueError("[ERROR] DATABASE_URL not set!")
     return DATABASE_URL
+
+def gzip_compress(src):
+    dst = src + ".gz"
+    with open(src, "rb") as f_in:
+        with gzip.open(dst, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    return dst
 
 def run_backup():
     if shutil.which("pg_dump") is None:
@@ -99,7 +107,7 @@ def run_backup():
             log("[SUCCESS] Backup encrypted successfully")
         else:
             log("[INFO] Compressing backup with gzip...")
-            subprocess.run(["gzip", "-f", backup_file], check=True)
+            gzip_compress(backup_file)
             log("[SUCCESS] Backup compressed successfully")
 
     except subprocess.CalledProcessError as e:
