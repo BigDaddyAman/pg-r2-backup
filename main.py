@@ -22,6 +22,7 @@ R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY")
 R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME")
 R2_ENDPOINT = os.environ.get("R2_ENDPOINT")
 MAX_BACKUPS = int(os.environ.get("MAX_BACKUPS", 7))
+KEEP_LOCAL_BACKUP = os.environ.get("KEEP_LOCAL_BACKUP", "false").lower() == "true"
 BACKUP_PREFIX = os.environ.get("BACKUP_PREFIX", "")
 FILENAME_PREFIX = os.environ.get("FILENAME_PREFIX", "backup")
 DUMP_FORMAT = os.environ.get("DUMP_FORMAT", "dump")
@@ -173,7 +174,11 @@ def run_backup():
         log(f"[ERROR] R2 operation failed: {e}")
     finally:
         if os.path.exists(compressed_file):
-            os.remove(compressed_file)
+                if KEEP_LOCAL_BACKUP:
+                    log("[INFO] Keeping local backup (KEEP_LOCAL_BACKUP=true)")
+                else:
+                    os.remove(compressed_file)
+                    log("[INFO] Local backup deleted")
 
 if __name__ == "__main__":
     log("[INFO] Starting backup scheduler...")

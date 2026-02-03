@@ -54,6 +54,11 @@ def doctor():
     else:
         print("Compression      : gzip")
 
+    if os.environ.get("KEEP_LOCAL_BACKUP", "false").lower() == "true":
+        print("Local backups    : kept after upload")
+    else:
+        print("Local backups    : deleted after upload")
+
     print("\nDoctor check complete.")
 
 
@@ -65,6 +70,7 @@ def config_show():
         "DUMP_FORMAT": os.environ.get("DUMP_FORMAT", "dump"),
         "FILENAME_PREFIX": os.environ.get("FILENAME_PREFIX", "backup"),
         "MAX_BACKUPS": os.environ.get("MAX_BACKUPS", "7"),
+        "KEEP_LOCAL_BACKUP": os.environ.get("KEEP_LOCAL_BACKUP", "false"),
         "BACKUP_TIME": os.environ.get("BACKUP_TIME", "00:00"),
         "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", ""),
         "R2_ENDPOINT": os.environ.get("R2_ENDPOINT", ""),

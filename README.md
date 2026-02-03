@@ -24,6 +24,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - 🐳 **Docker Ready** — portable, lightweight container  
 - 🚀 **Railway Template First** — no fork required for normal usage  
 - 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
+- 💾 **Optional Local Retention** — keep backups locally for CLI, VPS, or NAS usage
 
 ---
 
@@ -32,7 +33,9 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 1. Click the **Deploy on Railway** button below  
 2. Railway will create a new project using the latest version of this repository  
 3. Add the required environment variables in the Railway dashboard  
-4. (Optional) Configure a cron job for your desired backup schedule  
+4. (Optional) Configure a cron job for your desired backup schedule
+
+> Railway uses ephemeral storage. Local backup files are deleted by default after upload.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/postgres-to-r2-backup?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
@@ -48,6 +51,7 @@ USE_PUBLIC_URL=false    # Set true to use DATABASE_PUBLIC_URL
 DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
 FILENAME_PREFIX=backup  # Backup filename prefix
 MAX_BACKUPS=7           # Number of backups to retain
+KEEP_LOCAL_BACKUP=false # Keep backup file locally after upload (not recommended on PaaS)
 
 R2_ENDPOINT=            # S3 endpoint URL
 R2_BUCKET_NAME=         # Bucket name
@@ -166,13 +170,13 @@ If you downloaded a prebuilt Docker image archive (`.tar` or `.tar.gz`), you can
 
 ```bash
 # Extract the archive (if compressed)
-tar -xzf postgres-to-r2-backup_v1.0.4.tar.gz
+tar -xzf postgres-to-r2-backup_v1.0.6.tar.gz
 
 # Load the image into Docker
-docker load -i postgres-to-r2-backup_v1.0.4.tar
+docker load -i postgres-to-r2-backup_v1.0.6.tar
 
 # Run the container
-docker run --env-file .env postgres-to-r2-backup:v1.0.4
+docker run --env-file .env postgres-to-r2-backup:v1.0.6
 ```
 
 > Prebuilt images are architecture-specific (amd64 / arm64).
@@ -224,6 +228,17 @@ When running via the CLI, environment variables are resolved in the following or
 2. System environment variables
 
 This allows different folders to maintain separate backup configurations.
+
+### Local Backup Behavior (CLI)
+
+By default, pg-r2-backup deletes the local backup file after a successful upload.
+
+To keep a local copy (recommended for local machines, VPS, or NAS):
+
+    KEEP_LOCAL_BACKUP=true
+
+> Not recommended on PaaS platforms (Railway, Fly.io, Render, Heroku, etc.)
+> due to ephemeral filesystems.
 
 ### Scheduling Backups (CLI)
 
