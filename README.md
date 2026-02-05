@@ -265,26 +265,6 @@ Run `pg-r2-backup schedule` at any time to see scheduling examples.
 
 ---
 
-## 🔐 Security
-
-- **Do not expose PostgreSQL directly to the public internet.**  
-  If your database is not on a private network, use a secure tunnel instead.
-
-- **Recommended: Cloudflare Tunnel**  
-  When using a public database URL, it is strongly recommended to connect via a secure tunnel such as **Cloudflare Tunnel** rather than opening database ports.
-
-- **Protect credentials**  
-  Store all secrets (database URLs, R2 keys, encryption passwords) using environment variables.  
-  Never commit `.env` files to version control.
-
-- **Encrypted backups (optional)**  
-  Set `BACKUP_PASSWORD` to enable encrypted backups using 7z before uploading to S3-compatible storage.
-
-- **Least privilege access**  
-  Use a PostgreSQL user with read-only access where possible, and restrict R2 credentials to the required bucket only.
-
----
-
 ## 🛠 Development & Contributions
 
 Fork this repository **only if you plan to**:
@@ -295,6 +275,8 @@ Fork this repository **only if you plan to**:
 - Run locally for development
 
 ---
+
+## For security best practices and deployment recommendations, see [SECURITY.md](SECURITY.md).
 
 ## ❓ FAQ
 
