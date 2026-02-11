@@ -7,9 +7,10 @@
 
 # Postgres-to-R2 Backup (S3-Compatible)
 
-A lightweight automation service that creates scheduled PostgreSQL backups and securely uploads them to **S3-compatible object storage**
-such as **Cloudflare R2, AWS S3, Wasabi, Backblaze B2, or MinIO**.  
-Designed specifically as a **Railway deployment template**, with built-in support for Docker and cron scheduling.
+A lightweight PostgreSQL backup automation tool that creates scheduled backups and securely uploads them to **S3-compatible object storage**
+such as **Cloudflare R2, AWS S3, Wasabi, Backblaze B2, or MinIO**.
+
+It is designed to run reliably on **PaaS platforms**, with first-class support for Docker and cron scheduling, while remaining fully portable via a CLI or container.
 
 ---
 
@@ -22,7 +23,7 @@ Designed specifically as a **Railway deployment template**, with built-in suppor
 - 🔗 **Flexible Database URLs** — supports private and public PostgreSQL connection URLs
 - ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
 - 🐳 **Docker Ready** — portable, lightweight container  
-- 🚀 **Railway Template First** — no fork required for normal usage  
+- 🚀 **Deployment Templates** — no fork required for normal usage
 - 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
 - 💾 **Optional Local Retention** — keep backups locally for CLI, VPS, or NAS usage
 
