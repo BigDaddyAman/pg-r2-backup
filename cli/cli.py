@@ -24,10 +24,23 @@ def mask(value, show=4):
 def doctor():
     print("pg-r2-backup doctor\n")
     
-    if shutil.which("pg_dump") is None:
-        print("[FAIL] pg_dump not found in PATH")
+    if shutil.which("psql") is None:
+        print("[FAIL] psql not found in PATH")
     else:
-        print("[OK] pg_dump found")
+        print("[OK] psql found")
+
+    try:
+        pg_dumps = [f"pg_dump-{v}" for v in ["18", "17", "16", "15"] if shutil.which(f"pg_dump-{v}")]
+
+        if not pg_dumps:
+            print("[FAIL] No pg_dump binaries found")
+        else:
+            preview = ", ".join(sorted(pg_dumps)[:3])
+            more = "..." if len(pg_dumps) > 3 else ""
+            print(f"[OK] Found: {preview}{more}")
+
+    except Exception:
+        print("[WARNING] Unable to check pg_dump binaries")
 
     required_envs = [
         "DATABASE_URL",
@@ -116,7 +129,7 @@ def schedule_info():
 def main():
     parser = argparse.ArgumentParser(
         prog="pg-r2-backup",
-        description="PostgreSQL backup tool for Cloudflare R2",
+        description="PostgreSQL backup tool for S3-compatible storage",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""
             Examples:
