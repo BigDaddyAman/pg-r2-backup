@@ -42,7 +42,10 @@ to S3-compatible storage.
 ## Reporting Security Issues
 
 If you discover a security vulnerability, please report it responsibly.
-Do **not** open a public issue with sensitive details.
+
+- Do **not** open a public GitHub issue with sensitive details.
+- Use GitHub’s **Security Advisories** feature to submit a private report.
+
+Security reports will be reviewed and addressed as soon as possible.
 
 > This document describes recommended security practices; exact requirements depend on your deployment environment.
-

@@ -115,7 +115,8 @@ You can configure the backup schedule using **Railway Cron Jobs**:
 - Adjust `MAX_BACKUPS` to match your schedule
 
 > If you use Railway Cron Jobs, the service will start once per execution.
-> In this case, the internal scheduler is ignored after startup.
+> In this setup, the service is expected to run a single backup and exit. Any internal scheduler should not be relied on.
+> Ensure the backup process exits cleanly after completion; otherwise, Railway will skip subsequent cron executions.
 
 ---
 

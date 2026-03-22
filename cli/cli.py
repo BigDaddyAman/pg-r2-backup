@@ -116,7 +116,7 @@ def schedule_info():
 def main():
     parser = argparse.ArgumentParser(
         prog="pg-r2-backup",
-        description="PostgreSQL backup tool for Cloudflare R2",
+        description="PostgreSQL backup tool for S3-compatible storage",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""
             Examples:
