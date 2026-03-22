@@ -24,23 +24,10 @@ def mask(value, show=4):
 def doctor():
     print("pg-r2-backup doctor\n")
     
-    if shutil.which("psql") is None:
-        print("[FAIL] psql not found in PATH")
+    if shutil.which("pg_dump") is None:
+        print("[FAIL] pg_dump not found in PATH")
     else:
-        print("[OK] psql found")
-
-    try:
-        pg_dumps = [f"pg_dump-{v}" for v in ["18", "17", "16", "15"] if shutil.which(f"pg_dump-{v}")]
-
-        if not pg_dumps:
-            print("[FAIL] No pg_dump binaries found")
-        else:
-            preview = ", ".join(sorted(pg_dumps)[:3])
-            more = "..." if len(pg_dumps) > 3 else ""
-            print(f"[OK] Found: {preview}{more}")
-
-    except Exception:
-        print("[WARNING] Unable to check pg_dump binaries")
+        print("[OK] pg_dump found")
 
     required_envs = [
         "DATABASE_URL",

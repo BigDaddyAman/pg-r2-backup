@@ -53,41 +53,6 @@ def get_database_url():
         raise ValueError("[ERROR] DATABASE_URL not set!")
     return DATABASE_URL
 
-def get_pg_version(database_url):
-    result = subprocess.run(
-        ["psql", database_url, "-t", "-c", "SHOW server_version;"],
-        capture_output=True,
-        text=True
-    )
-
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to detect PostgreSQL version: {result.stderr}")
-
-    version = result.stdout.strip()
-
-    if not version:
-        raise RuntimeError("Empty PostgreSQL version returned")
-
-    return version.split(".")[0]
-
-def get_pg_dump(database_url):
-    version = get_pg_version(database_url)
-    candidate = f"pg_dump-{version}"
-
-    if shutil.which(candidate):
-        log(f"[INFO] Using {candidate}")
-        return candidate
-
-    log(f"[WARNING] {candidate} not found, trying latest available...")
-
-    for v in ["18", "17", "16", "15"]:
-        fallback = f"pg_dump-{v}"
-        if shutil.which(fallback):
-            log(f"[INFO] Fallback to {fallback}")
-            return fallback
-
-    return "pg_dump"
-
 def gzip_compress(src):
     dst = src + ".gz"
     with open(src, "rb") as f_in:
@@ -96,8 +61,8 @@ def gzip_compress(src):
     return dst
 
 def run_backup():
-    if shutil.which("psql") is None:
-        log("[ERROR] psql not found. Install postgresql-client.")
+    if shutil.which("pg_dump") is None:
+        log("[ERROR] pg_dump not found. Install postgresql-client.")
         return
 
     database_url = get_database_url()
@@ -125,10 +90,8 @@ def run_backup():
     try:
         log(f"[INFO] Creating backup {backup_file}")
 
-        pg_dump_bin = get_pg_dump(database_url)
-
         dump_cmd = [
-            pg_dump_bin,
+            "pg_dump",
             f"--dbname={database_url}",
             "-F", pg_format,
             "--no-owner",
@@ -136,7 +99,7 @@ def run_backup():
             "-f", backup_file
         ]
 
-        subprocess.run(dump_cmd, check=True, timeout=600)  #10 min
+        subprocess.run(dump_cmd, check=True)
 
         if BACKUP_PASSWORD:
             log("[INFO] Encrypting backup with 7z...")
