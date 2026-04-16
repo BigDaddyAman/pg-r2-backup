@@ -7,6 +7,10 @@ from boto3.s3.transfer import TransferConfig
 from dotenv import load_dotenv, find_dotenv
 import time
 import schedule
+import botocore.utils
+
+# Monkey-patch: bypass endpoint URL validation for Cloudflare R2 EU jurisdiction endpoints
+botocore.utils.is_valid_endpoint_url = lambda endpoint_url: True
 import py7zr
 import shutil
 import gzip
