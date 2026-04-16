@@ -1,7 +1,7 @@
 import os
 import subprocess
 import boto3
-from boto3.session import Config
+from botocore.config import Config
 from datetime import datetime, timezone
 from boto3.s3.transfer import TransferConfig
 from dotenv import load_dotenv, find_dotenv
@@ -130,7 +130,7 @@ def run_backup():
             aws_access_key_id=R2_ACCESS_KEY,
             aws_secret_access_key=R2_SECRET_KEY,
             region_name=S3_REGION,
-            config=Config(
+            config=Config(signature_version="s3v4", 
                 s3={"addressing_style": "path"}
             )
         )
