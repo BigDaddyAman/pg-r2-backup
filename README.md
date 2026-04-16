@@ -1,293 +1,55 @@
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.12-blue)
-![Storage](https://img.shields.io/badge/storage-S3--compatible-orange)
-![Database](https://img.shields.io/badge/database-PostgreSQL-336791)
-![Deploy](https://img.shields.io/badge/deploy-Railway-purple)
-![Docker](https://img.shields.io/badge/docker-supported-blue)
+# PostgreSQL Backup to Cloudflare R2 (with EU Jurisdiction Support)
 
-# Postgres-to-R2 Backup (S3-Compatible)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy?template=https://github.com/midego1/pg-r2-backup)
 
-A lightweight PostgreSQL backup automation tool that creates scheduled backups and securely uploads them to **S3-compatible object storage**
-such as **Cloudflare R2, AWS S3, Wasabi, Backblaze B2, or MinIO**.
+Automated PostgreSQL backup service that creates scheduled database dumps and uploads them to Cloudflare R2 (S3-compatible storage). Supports **all R2 jurisdictions** including EU (`*.eu.r2.cloudflarestorage.com`).
 
-It is designed to run reliably on **PaaS platforms**, with first-class support for Docker and cron scheduling, while remaining fully portable via a CLI or container.
+Forked from [BigDaddyAman/pg-r2-backup](https://github.com/BigDaddyAman/pg-r2-backup) with a fix for Cloudflare R2 EU jurisdiction endpoint compatibility.
 
----
+## What's Different from the Original?
 
-## ✨ Features
+- **EU jurisdiction support** — Bypasses botocore's endpoint URL validation that rejects `.eu.` subdomains in Cloudflare R2 EU jurisdiction endpoints
+- **PostgreSQL 18 client** — Supports the latest PostgreSQL version
+- **Works with all R2 jurisdictions** — EU, FedRAMP, or default
 
-- 📦 **Automated Backups** — scheduled daily or hourly PostgreSQL backups  
-- 🔐 **Optional Encryption** — gzip compression or 7z encryption with password  
-- ☁️ **Cloudflare R2 Integration** — seamless S3-compatible storage support
-- 🧹 **Retention Policy** — automatically delete old backups  
-- 🔗 **Flexible Database URLs** — supports private and public PostgreSQL connection URLs
-- ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
-- 🐳 **Docker Ready** — portable, lightweight container  
-- 🚀 **Deployment Templates** — no fork required for normal usage
-- 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
-- 💾 **Optional Local Retention** — keep backups locally for CLI, VPS, or NAS usage
+## Features
 
----
+- Automated daily PostgreSQL backups via `pg_dump`
+- Upload to Cloudflare R2 (or any S3-compatible storage)
+- Optional gzip compression or 7z encryption
+- Configurable retention policies (auto-delete old backups)
+- Runs on Railway, Docker, or standalone
 
-## 🚀 Deployment on Railway 
+## Environment Variables
 
-1. Click the **Deploy on Railway** button below  
-2. Railway will create a new project using the latest version of this repository  
-3. Add the required environment variables in the Railway dashboard  
-4. (Optional) Configure a cron job for your desired backup schedule
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (Railway provides this automatically) |
+| `R2_ACCESS_KEY` | Yes | Cloudflare R2 API access key |
+| `R2_SECRET_KEY` | Yes | Cloudflare R2 API secret key |
+| `R2_BUCKET_NAME` | Yes | R2 bucket name (e.g., `my-db-backups`) |
+| `R2_ENDPOINT` | Yes | R2 S3 API endpoint — **base URL only, no bucket path** (e.g., `https://ACCOUNT_ID.eu.r2.cloudflarestorage.com`) |
+| `S3_REGION` | No | Region for R2 (default: `us-east-1`, use `WEUR` for EU buckets or `auto`) |
+| `BACKUP_TIME` | No | Daily backup time in UTC (default: `00:00`, e.g., `03:30`) |
+| `MAX_BACKUPS` | No | Number of backups to retain (default: `7`) |
+| `DUMP_FORMAT` | No | pg_dump format: `custom`, `plain`, `directory`, `tar` (default: auto) |
+| `KEEP_LOCAL_BACKUP` | No | Keep local backup file after upload: `true`/`false` (default: `false`) |
 
-> Railway uses ephemeral storage. Local backup files are deleted by default after upload.
+## Cloudflare R2 EU Jurisdiction
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/postgres-to-r2-backup?referralCode=nIQTyp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+If your R2 bucket uses EU jurisdiction, set:
 
----
-
-## 🔧 Environment Variables (S3-Compatible)
-
-```env
-DATABASE_URL=           # PostgreSQL database URL (private)
-DATABASE_PUBLIC_URL=    # Public PostgreSQL URL (optional)
-USE_PUBLIC_URL=false    # Set true to use DATABASE_PUBLIC_URL
-
-DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
-FILENAME_PREFIX=backup  # Backup filename prefix
-MAX_BACKUPS=7           # Number of backups to retain
-KEEP_LOCAL_BACKUP=false # Keep backup file locally after upload (not recommended on PaaS)
-
-R2_ENDPOINT=            # S3 endpoint URL
-R2_BUCKET_NAME=         # Bucket name
-R2_ACCESS_KEY=          # Access key
-R2_SECRET_KEY=          # Secret key
-S3_REGION=us-east-1     # Required for AWS S3 (ignored by R2/MinIO)
-
-BACKUP_PASSWORD=        # Optional: enables 7z encryption
-BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
+```
+R2_ENDPOINT=https://YOUR_ACCOUNT_ID.eu.r2.cloudflarestorage.com
+S3_REGION=WEUR
 ```
 
-> Variable names use `R2_*` for historical reasons, but **any S3-compatible provider** can be used by changing the endpoint and credentials.
-> For AWS S3 users: ensure `S3_REGION` matches your bucket’s region.
+The `.eu.` subdomain is required for EU jurisdiction buckets and this fork handles it correctly.
 
----
+## Deploy on Railway
 
-## ☁️ Supported S3-Compatible Providers
+Click the button above or use the [Railway template](https://railway.com/deploy?template=https://github.com/midego1/pg-r2-backup).
 
-This project uses the **standard AWS S3 API via boto3**, and works with:
+## License
 
-- Cloudflare R2 (recommended)
-- AWS S3
-- Wasabi
-- Backblaze B2 (S3 API)
-- MinIO (self-hosted)
-
-### Example Endpoints
-
-| Provider | Endpoint Example |
-|--------|------------------|
-| Cloudflare R2 | `https://<accountid>.r2.cloudflarestorage.com` |
-| AWS S3 | `https://s3.amazonaws.com` |
-| Wasabi | `https://s3.wasabisys.com` |
-| Backblaze B2 | `https://s3.us-west-004.backblazeb2.com` |
-| MinIO | `http://localhost:9000` |
-
----
-
-## ⏰ Railway Cron Jobs
-
-You can configure the backup schedule using **Railway Cron Jobs**:
-
-1. Open your Railway project  
-2. Go to **Deployments → Cron**  
-3. Add a cron job targeting this service  
-
-### Common Cron Expressions
-
-| Schedule | Cron Expression | Description |
-|--------|----------------|------------|
-| Hourly | `0 * * * *` | Every hour |
-| Daily | `0 0 * * *` | Once per day (UTC midnight) |
-| Twice Daily | `0 */12 * * *` | Every 12 hours |
-| Weekly | `0 0 * * 0` | Every Sunday |
-| Monthly | `0 0 1 * *` | First day of the month |
-
-**Tips**
-- All cron times are **UTC**
-- Use https://crontab.guru to validate expressions
-- Adjust `MAX_BACKUPS` to match your schedule
-
-> If you use Railway Cron Jobs, the service will start once per execution.
-> In this setup, the service is expected to run a single backup and exit. Any internal scheduler should not be relied on.
-> Ensure the backup process exits cleanly after completion; otherwise, Railway will skip subsequent cron executions.
-
----
-
-## 🖥️ Running Locally or on Other Platforms
-
-It can run on **any platform** that supports:
-- Python 3.9+
-- `pg_dump` (PostgreSQL client tools)
-- Environment variables
-- Long-running background processes or cron
-
-> Docker images use **Python 3.12** by default.  
-> Local execution supports **Python 3.9+**.
-
-### Supported Environments
-
-- Local machine (Linux / macOS / Windows*)
-- VPS (Netcup, Hetzner, DigitalOcean, etc.)
-- Docker containers
-- Other PaaS providers (Heroku, Fly.io, Render, etc.)
-
-> *Windows is supported when `pg_dump` is installed and available in PATH.*
-
-### Local Requirements
-
-- Python 3.9+
-- PostgreSQL client tools (`pg_dump`)
-- pip
-
-### Run Manually (Local)
-
-```bash
-pip install -r requirements.txt
-python main.py
-```
-
-### Run with Docker (Optional)
-
-Build and run the image locally:
-
-```bash
-docker build -t postgres-to-r2-backup .
-docker run --env-file .env postgres-to-r2-backup
-```
-
-> Ensure the container is allowed to run continuously when not using an external cron scheduler.
-
-> All scheduling uses **UTC** by default (e.g. Malaysia UTC+8 → set `BACKUP_TIME=16:00` for midnight).
-
-### Run from Prebuilt Docker Image
-
-If you downloaded a prebuilt Docker image archive (`.tar` or `.tar.gz`), you can run it without building locally:
-
-```bash
-# Extract the archive (if compressed)
-tar -xzf postgres-to-r2-backup_v1.0.6.tar.gz
-
-# Load the image into Docker
-docker load -i postgres-to-r2-backup_v1.0.6.tar
-
-# Run the container
-docker run --env-file .env postgres-to-r2-backup:v1.0.6
-```
-
-> Prebuilt images are architecture-specific (amd64 / arm64).
-
----
-
-## 🧰 Using the CLI (Global Installation)
-
-This project can also be used as a standalone CLI tool, installable via pip, in addition to running as a Railway or Docker service.
-
-### Install via pip
-
-```bash
-pip install pg-r2-backup
-```
-
-### Requirements
-
-- Python 3.9+
-- PostgreSQL client tools (`pg_dump`) installed and available in PATH
-
-### Quick Start (CLI)
-
-```bash
-mkdir backups
-cd backups
-
-pg-r2-backup init      # creates .env from .env.example
-pg-r2-backup doctor    # checks environment and dependencies
-pg-r2-backup run       # runs a backup immediately
-```
-
-### CLI Commands
-
-```bash
-pg-r2-backup run            # Run backup immediately
-pg-r2-backup doctor         # Check environment & dependencies
-pg-r2-backup config show    # Show current configuration
-pg-r2-backup init           # Create .env from .env.example
-pg-r2-backup schedule       # Show scheduling examples
-pg-r2-backup --version
-```
-
-### Environment Variable Resolution (CLI)
-
-When running via the CLI, environment variables are resolved in the following order:
-
-1. A `.env` file in the current working directory (or parent directory)
-2. System environment variables
-
-This allows different folders to maintain separate backup configurations.
-
-### Local Backup Behavior (CLI)
-
-By default, pg-r2-backup deletes the local backup file after a successful upload.
-
-To keep a local copy (recommended for local machines, VPS, or NAS):
-
-    KEEP_LOCAL_BACKUP=true
-
-> Not recommended on PaaS platforms (Railway, Fly.io, Render, Heroku, etc.)
-> due to ephemeral filesystems.
-
-### Scheduling Backups (CLI)
-
-The CLI does not run a background scheduler. Use your operating system or platform scheduler instead.
-
-**Linux / macOS (cron)**
-
-```bash
-0 0 * * * pg-r2-backup run
-```
-
-**Windows (Task Scheduler)**
-
-- Program: `pg-r2-backup`
-- Arguments: `run`
-- Start in: folder containing `.env` (working directory)
-
-**Railway / Docker**
-
-Use the platform's built-in scheduler (recommended).
-
-💡 **Tip**  
-Run `pg-r2-backup schedule` at any time to see scheduling examples.
-
----
-
-## 🛠 Development & Contributions
-
-Fork this repository **only if you plan to**:
-
-- Modify the backup logic
-- Add features or integrations
-- Submit pull requests
-- Run locally for development
-
----
-
-## For security best practices and deployment recommendations, see [SECURITY.md](SECURITY.md).
-
-## ❓ FAQ
-
-**Why only DATABASE_URL?**  
-This matches how most modern platforms expose PostgreSQL credentials.  
-Support for separate DB variables may be added if there is demand.
-
-## 📜 License
-
-This project is open source under the **MIT License**.
-
-You are free to use, modify, and distribute it with attribution.
+See [MIT License](MIT%20License.md).
