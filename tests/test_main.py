@@ -65,3 +65,87 @@ def test_mirror_max_backups_falls_back_to_max_backups(monkeypatch):
 
     cfg = mirror_config()
     assert cfg["max_backups"] == 30
+
+
+def test_upload_to_destination_uploads_file_and_logs(monkeypatch, mock_s3, tmp_path, capsys):
+    """upload_to_destination() puts the file in the named bucket and emits prefixed logs."""
+    backup_file = tmp_path / "backup_test.dump.gz"
+    backup_file.write_bytes(b"fake backup data")
+
+    from main import upload_to_destination
+
+    dest = {
+        "label": "r2",
+        "endpoint": None,  # moto handles regional default
+        "bucket_name": "primary-bucket",
+        "access_key": "test",
+        "secret_key": "test",
+        "region": "us-east-1",
+        "max_backups": 7,
+    }
+
+    success = upload_to_destination(dest, str(backup_file), "backup_test.dump.gz")
+
+    assert success is True
+    objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
+    assert objects["KeyCount"] == 1
+    assert objects["Contents"][0]["Key"] == "backup_test.dump.gz"
+
+    captured = capsys.readouterr()
+    assert "[r2]" in captured.out
+    assert "uploaded" in captured.out
+
+
+def test_upload_to_destination_returns_false_on_failure(monkeypatch, tmp_path, capsys):
+    """upload_to_destination() returns False (and logs ERROR) when the upload fails."""
+    backup_file = tmp_path / "backup_test.dump.gz"
+    backup_file.write_bytes(b"fake backup data")
+
+    from main import upload_to_destination
+
+    # Point at a nonexistent endpoint so boto3 fails
+    dest = {
+        "label": "mirror",
+        "endpoint": "http://localhost:1",  # no server here
+        "bucket_name": "mirror-bucket",
+        "access_key": "test",
+        "secret_key": "test",
+        "region": "us-east-1",
+        "max_backups": 7,
+    }
+
+    success = upload_to_destination(dest, str(backup_file), "backup_test.dump.gz")
+
+    assert success is False
+    captured = capsys.readouterr()
+    assert "[mirror]" in captured.out
+    assert "FAILED" in captured.out or "ERROR" in captured.out
+
+
+def test_upload_to_destination_prunes_old_backups(monkeypatch, mock_s3, tmp_path, capsys):
+    """After uploading, old backups beyond max_backups are deleted."""
+    # Pre-populate the bucket with 5 fake old backups
+    for i in range(5):
+        mock_s3.put_object(Bucket="primary-bucket", Key=f"backup_old_{i}.dump.gz", Body=b"old")
+
+    backup_file = tmp_path / "backup_new.dump.gz"
+    backup_file.write_bytes(b"fake")
+
+    from main import upload_to_destination
+
+    dest = {
+        "label": "r2",
+        "endpoint": None,
+        "bucket_name": "primary-bucket",
+        "access_key": "test",
+        "secret_key": "test",
+        "region": "us-east-1",
+        "max_backups": 3,  # keep only 3 newest
+    }
+
+    success = upload_to_destination(dest, str(backup_file), "backup_new.dump.gz")
+
+    assert success is True
+    objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
+    # We had 5 old + 1 new = 6 total, pruned to 3 = 3 deleted
+    assert objects["KeyCount"] == 3

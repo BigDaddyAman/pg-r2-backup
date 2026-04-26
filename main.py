@@ -88,6 +88,60 @@ def mirror_config():
         "max_backups": int(MIRROR_MAX_BACKUPS) if MIRROR_MAX_BACKUPS else MAX_BACKUPS,
     }
 
+
+def upload_to_destination(dest, local_file, remote_key):
+    """
+    Upload a single file to one S3-compatible destination, then prune old backups
+    beyond dest['max_backups']. Logs are prefixed with dest['label'] so multi-destination
+    runs are easy to diagnose.
+
+    Returns True if upload succeeded, False if it failed. Retention failures are
+    logged but don't flip the return value — retention is best-effort cleanup.
+    """
+    label = dest["label"]
+    try:
+        client = boto3.client(
+            "s3",
+            endpoint_url=dest["endpoint"],
+            aws_access_key_id=dest["access_key"],
+            aws_secret_access_key=dest["secret_key"],
+            region_name=dest["region"],
+            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+        )
+
+        config = TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            multipart_chunksize=8 * 1024 * 1024,
+            max_concurrency=4,
+            use_threads=True,
+        )
+
+        log(f"[{label}] uploading {remote_key}")
+        client.upload_file(local_file, dest["bucket_name"], remote_key, Config=config)
+        size_mb = os.path.getsize(local_file) / 1024 / 1024
+        log(f"[{label}] uploaded ({size_mb:.2f} MB)")
+    except Exception as e:
+        log(f"[{label}] FAILED: {e}")
+        return False
+
+    # Best-effort retention (don't fail the run on retention errors)
+    try:
+        objects = client.list_objects_v2(Bucket=dest["bucket_name"], Prefix=BACKUP_PREFIX)
+        contents = objects.get("Contents", [])
+        if contents:
+            backups = sorted(contents, key=lambda x: x["LastModified"], reverse=True)
+            pruned = 0
+            for obj in backups[dest["max_backups"]:]:
+                client.delete_object(Bucket=dest["bucket_name"], Key=obj["Key"])
+                pruned += 1
+            if pruned:
+                log(f"[{label}] retention: pruned {pruned} backup(s) beyond {dest['max_backups']}")
+    except Exception as e:
+        log(f"[{label}] retention WARNING (non-fatal): {e}")
+
+    return True
+
+
 def get_database_url():
     if USE_PUBLIC_URL:
         if not DATABASE_PUBLIC_URL:
