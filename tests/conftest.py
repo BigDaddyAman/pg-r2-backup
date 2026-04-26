@@ -1,8 +1,9 @@
 """Shared pytest fixtures."""
-import os
+import sys
+
+import boto3
 import pytest
 from moto import mock_aws
-import boto3
 
 
 @pytest.fixture(autouse=True)
@@ -27,8 +28,6 @@ def reset_env(monkeypatch, tmp_path):
         monkeypatch.delenv(key, raising=False)
 
     monkeypatch.chdir(tmp_path)
-
-    import sys
     sys.modules.pop("main", None)
 
 
