@@ -249,3 +249,57 @@ def test_run_backup_returns_false_when_one_destination_fails(
     # But R2 still got the upload (independent insurance)
     primary_objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
     assert primary_objects["KeyCount"] == 1
+
+
+def test_run_once_mode_exits_zero_on_success(monkeypatch, mock_s3, tmp_path):
+    """RUN_ONCE=true with successful run should call sys.exit(0)."""
+    monkeypatch.setenv("RUN_ONCE", "true")
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake:fake@localhost/fake")
+    monkeypatch.setenv("R2_ENDPOINT", "")
+    monkeypatch.setenv("R2_BUCKET_NAME", "primary-bucket")
+    monkeypatch.setenv("R2_ACCESS_KEY", "test")
+    monkeypatch.setenv("R2_SECRET_KEY", "test")
+
+    def fake_run(cmd, check):
+        idx = cmd.index("-f")
+        with open(cmd[idx + 1], "wb") as f:
+            f.write(b"fake")
+        return None
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pg_dump")
+
+    import importlib
+    import main
+    importlib.reload(main)
+
+    with pytest.raises(SystemExit) as exc:
+        main.main_entrypoint()
+    assert exc.value.code == 0
+
+
+def test_run_once_mode_exits_nonzero_on_failure(monkeypatch, mock_s3, tmp_path):
+    """RUN_ONCE=true with failing destination should call sys.exit(1)."""
+    monkeypatch.setenv("RUN_ONCE", "true")
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake:fake@localhost/fake")
+    monkeypatch.setenv("R2_ENDPOINT", "http://localhost:1")  # nothing here → upload fails
+    monkeypatch.setenv("R2_BUCKET_NAME", "primary-bucket")
+    monkeypatch.setenv("R2_ACCESS_KEY", "test")
+    monkeypatch.setenv("R2_SECRET_KEY", "test")
+
+    def fake_run(cmd, check):
+        idx = cmd.index("-f")
+        with open(cmd[idx + 1], "wb") as f:
+            f.write(b"fake")
+        return None
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pg_dump")
+
+    import importlib
+    import main
+    importlib.reload(main)
+
+    with pytest.raises(SystemExit) as exc:
+        main.main_entrypoint()
+    assert exc.value.code == 1

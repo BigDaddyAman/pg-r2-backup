@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import boto3
 from botocore.config import Config
 from datetime import datetime, timezone
@@ -34,6 +35,7 @@ BACKUP_PASSWORD = os.environ.get("BACKUP_PASSWORD")
 USE_PUBLIC_URL = os.environ.get("USE_PUBLIC_URL", "false").lower() == "true"
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "00:00")
 S3_REGION = os.environ.get("S3_REGION", "us-east-1")
+RUN_ONCE = os.environ.get("RUN_ONCE", "false").lower() == "true"
 
 def log(msg):
     print(msg, flush=True)
@@ -266,14 +268,34 @@ def run_backup():
     log(f"[done] all {len(results)} destination(s) OK")
     return True
 
-if __name__ == "__main__":
-    log("[INFO] Starting backup scheduler...")
-    log(f"[INFO] Scheduled backup time: {BACKUP_TIME} UTC")
+def main_entrypoint():
+    """
+    Entry point. Two modes:
+
+    - RUN_ONCE=true: run a single backup, exit 0 on success, 1 on failure.
+      Use this when deployed as a Railway cron job (exit code triggers
+      Railway's deploy-failed alerts).
+
+    - RUN_ONCE unset/false (default): daemon mode. Run once on startup, then
+      schedule daily runs at BACKUP_TIME. Original pg-r2-backup behaviour —
+      preserved for backwards compatibility with existing always-on deploys.
+    """
+    if RUN_ONCE:
+        log("[INFO] RUN_ONCE=true — single-shot mode")
+        success = run_backup()
+        sys.exit(0 if success else 1)
+
+    log("[INFO] starting backup scheduler (daemon mode)")
+    log(f"[INFO] scheduled backup time: {BACKUP_TIME} UTC")
 
     schedule.every().day.at(BACKUP_TIME).do(run_backup)
 
-    run_backup()
+    run_backup()  # run immediately on startup (preserves existing behaviour)
 
     while True:
         schedule.run_pending()
         time.sleep(60)
+
+
+if __name__ == "__main__":
+    main_entrypoint()
