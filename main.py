@@ -47,6 +47,47 @@ except ValueError:
     log("[WARNING] Invalid BACKUP_TIME format. Using default: 00:00")
     BACKUP_TIME = "00:00"
 
+## Mirror destination (optional, opt-in — secondary S3-compatible backup target)
+
+MIRROR_ENDPOINT = os.environ.get("MIRROR_ENDPOINT")
+MIRROR_BUCKET_NAME = os.environ.get("MIRROR_BUCKET_NAME")
+MIRROR_ACCESS_KEY = os.environ.get("MIRROR_ACCESS_KEY")
+MIRROR_SECRET_KEY = os.environ.get("MIRROR_SECRET_KEY")
+MIRROR_REGION = os.environ.get("MIRROR_REGION")
+MIRROR_MAX_BACKUPS = os.environ.get("MIRROR_MAX_BACKUPS")
+
+
+def mirror_config():
+    """
+    Return a dict describing the mirror destination, or None if mirror is disabled.
+
+    All four core fields (ENDPOINT, BUCKET_NAME, ACCESS_KEY, SECRET_KEY) must be
+    set together. Partial config raises ValueError so misconfiguration is loud.
+    """
+    fields = {
+        "MIRROR_ENDPOINT": MIRROR_ENDPOINT,
+        "MIRROR_BUCKET_NAME": MIRROR_BUCKET_NAME,
+        "MIRROR_ACCESS_KEY": MIRROR_ACCESS_KEY,
+        "MIRROR_SECRET_KEY": MIRROR_SECRET_KEY,
+    }
+    set_fields = {k: v for k, v in fields.items() if v}
+    if not set_fields:
+        return None  # mirror disabled
+    if len(set_fields) < len(fields):
+        missing = [k for k, v in fields.items() if not v]
+        raise ValueError(
+            f"Mirror destination misconfigured: {', '.join(missing)} not set. "
+            f"Set all four MIRROR_* fields together, or unset all four to disable the mirror."
+        )
+    return {
+        "endpoint": MIRROR_ENDPOINT,
+        "bucket_name": MIRROR_BUCKET_NAME,
+        "access_key": MIRROR_ACCESS_KEY,
+        "secret_key": MIRROR_SECRET_KEY,
+        "region": MIRROR_REGION or S3_REGION,
+        "max_backups": int(MIRROR_MAX_BACKUPS) if MIRROR_MAX_BACKUPS else MAX_BACKUPS,
+    }
+
 def get_database_url():
     if USE_PUBLIC_URL:
         if not DATABASE_PUBLIC_URL:
