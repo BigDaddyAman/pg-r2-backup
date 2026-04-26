@@ -60,7 +60,7 @@ R2_ACCESS_KEY=          # Access key
 R2_SECRET_KEY=          # Secret key
 S3_REGION=us-east-1     # Required for AWS S3 (ignored by R2/MinIO)
 
-RUN_ONCE=false          # Run once and exit (set true for Railway Cron)
+RUN_ONCE=false          # Run once and exit instead of scheduler (set true for Railway Cron)
 BACKUP_PASSWORD=        # Optional: enables 7z encryption
 BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
 ```
@@ -131,10 +131,13 @@ RUN_ONCE=true
 
 This ensures the service:
 
-runs a single backup
-exits cleanly after completion
+- runs a single backup  
+- exits cleanly after completion  
 
 If not set, the service will run continuously and future cron executions may be skipped.
+
+> `BACKUP_TIME` is only used when `RUN_ONCE=false` (daemon mode).  
+> When using Railway Cron (`RUN_ONCE=true`), scheduling is controlled by Railway.
 
 ---
 

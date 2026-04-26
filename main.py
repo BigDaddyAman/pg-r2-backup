@@ -192,11 +192,7 @@ if __name__ == "__main__":
 
     success = run_backup()
 
-    log(f"[DEBUG] run_backup() finished with success={success}")
-    log(f"[DEBUG] RUN_ONCE={RUN_ONCE}")
-
     if RUN_ONCE:
-        log("[DEBUG] Exiting now...")
         sys.exit(0 if success else 1)
 
     log(f"[INFO] Scheduled backup time: {BACKUP_TIME} UTC")
