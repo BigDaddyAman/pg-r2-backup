@@ -63,6 +63,9 @@ def mirror_config():
 
     All four core fields (ENDPOINT, BUCKET_NAME, ACCESS_KEY, SECRET_KEY) must be
     set together. Partial config raises ValueError so misconfiguration is loud.
+
+    Note: ENDPOINT may be empty (e.g. when targeting AWS-native S3 with regional
+    defaults); we treat empty ENDPOINT as a deliberate None.
     """
     fields = {
         "MIRROR_ENDPOINT": MIRROR_ENDPOINT,
@@ -70,17 +73,22 @@ def mirror_config():
         "MIRROR_ACCESS_KEY": MIRROR_ACCESS_KEY,
         "MIRROR_SECRET_KEY": MIRROR_SECRET_KEY,
     }
+    # Endpoint is connection-level config (like region) — optional, since AWS-native
+    # S3 works with regional defaults. The other three are identity and must coexist.
+    identity_fields = {k: v for k, v in fields.items() if k != "MIRROR_ENDPOINT"}
+    set_identity = {k: v for k, v in identity_fields.items() if v}
     set_fields = {k: v for k, v in fields.items() if v}
+
     if not set_fields:
         return None  # mirror disabled
-    if len(set_fields) < len(fields):
+    if len(set_identity) < len(identity_fields):
         missing = [k for k, v in fields.items() if not v]
         raise ValueError(
             f"Mirror destination misconfigured: {', '.join(missing)} not set. "
             f"Set all four MIRROR_* fields together, or unset all four to disable the mirror."
         )
     return {
-        "endpoint": MIRROR_ENDPOINT,
+        "endpoint": MIRROR_ENDPOINT or None,
         "bucket_name": MIRROR_BUCKET_NAME,
         "access_key": MIRROR_ACCESS_KEY,
         "secret_key": MIRROR_SECRET_KEY,
@@ -162,7 +170,7 @@ def gzip_compress(src):
 def run_backup():
     if shutil.which("pg_dump") is None:
         log("[ERROR] pg_dump not found. Install postgresql-client.")
-        return
+        return False
 
     database_url = get_database_url()
     log(f"[INFO] Using {'public' if USE_PUBLIC_URL else 'private'} database URL")
@@ -212,72 +220,51 @@ def run_backup():
 
     except subprocess.CalledProcessError as e:
         log(f"[ERROR] Backup creation failed: {e}")
-        return
+        return False
     finally:
         if os.path.exists(backup_file):
             os.remove(backup_file)
 
-    ## Upload to R2
+    ## Upload to all configured destinations
+
     if os.path.exists(compressed_file):
         size = os.path.getsize(compressed_file)
-        log(f"[INFO] Final backup size: {size / 1024 / 1024:.2f} MB")
+        log(f"[dump] final backup size: {size / 1024 / 1024:.2f} MB")
 
-    try:
-        client = boto3.client(
-            "s3",
-            endpoint_url=R2_ENDPOINT,
-            aws_access_key_id=R2_ACCESS_KEY,
-            aws_secret_access_key=R2_SECRET_KEY,
-            region_name=S3_REGION,
-            config=Config(signature_version="s3v4", 
-                s3={"addressing_style": "path"}
-            )
-        )
+    destinations = [
+        {
+            "label": "r2",
+            "endpoint": R2_ENDPOINT or None,
+            "bucket_name": R2_BUCKET_NAME,
+            "access_key": R2_ACCESS_KEY,
+            "secret_key": R2_SECRET_KEY,
+            "region": S3_REGION,
+            "max_backups": MAX_BACKUPS,
+        }
+    ]
 
-        config = TransferConfig(
-            multipart_threshold=8 * 1024 * 1024,
-            multipart_chunksize=8 * 1024 * 1024,
-            max_concurrency=4,
-            use_threads=True
-        )
+    mirror = mirror_config()
+    if mirror:
+        destinations.append({"label": "mirror", **mirror})
 
-        client.upload_file(
-            compressed_file,
-            R2_BUCKET_NAME,
-            compressed_file_r2,
-            Config=config
-        )
+    results = []
+    for dest in destinations:
+        ok = upload_to_destination(dest, compressed_file, compressed_file_r2)
+        results.append((dest["label"], ok))
 
-        log(f"[SUCCESS] Backup uploaded: {compressed_file_r2}")
+    if os.path.exists(compressed_file):
+        if KEEP_LOCAL_BACKUP:
+            log("[done] keeping local backup (KEEP_LOCAL_BACKUP=true)")
+        else:
+            os.remove(compressed_file)
+            log("[done] local backup deleted")
 
-        objects = client.list_objects_v2(
-            Bucket=R2_BUCKET_NAME,
-            Prefix=BACKUP_PREFIX
-        )
-
-        if "Contents" in objects:
-            backups = sorted(
-                objects["Contents"],
-                key=lambda x: x["LastModified"],
-                reverse=True
-            )
-
-            for obj in backups[MAX_BACKUPS:]:
-                client.delete_object(
-                    Bucket=R2_BUCKET_NAME,
-                    Key=obj["Key"]
-                )
-                log(f"[INFO] Deleted old backup: {obj['Key']}")
-
-    except Exception as e:
-        log(f"[ERROR] R2 operation failed: {e}")
-    finally:
-        if os.path.exists(compressed_file):
-                if KEEP_LOCAL_BACKUP:
-                    log("[INFO] Keeping local backup (KEEP_LOCAL_BACKUP=true)")
-                else:
-                    os.remove(compressed_file)
-                    log("[INFO] Local backup deleted")
+    failed = [label for label, ok in results if not ok]
+    if failed:
+        log(f"[done] {len(failed)} of {len(results)} destination(s) failed: {', '.join(failed)} — overall FAIL")
+        return False
+    log(f"[done] all {len(results)} destination(s) OK")
+    return True
 
 if __name__ == "__main__":
     log("[INFO] Starting backup scheduler...")

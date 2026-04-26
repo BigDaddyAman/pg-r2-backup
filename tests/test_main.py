@@ -149,3 +149,103 @@ def test_upload_to_destination_prunes_old_backups(monkeypatch, mock_s3, tmp_path
     objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
     # We had 5 old + 1 new = 6 total, pruned to 3 = 3 deleted
     assert objects["KeyCount"] == 3
+
+
+def test_run_backup_returns_true_when_only_r2_configured_and_succeeds(
+    monkeypatch, mock_s3, tmp_path, capsys
+):
+    """With only R2 configured (no MIRROR_*), run_backup() returns True on success."""
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake:fake@localhost/fake")
+    monkeypatch.setenv("R2_ENDPOINT", "")  # moto regional default
+    monkeypatch.setenv("R2_BUCKET_NAME", "primary-bucket")
+    monkeypatch.setenv("R2_ACCESS_KEY", "test")
+    monkeypatch.setenv("R2_SECRET_KEY", "test")
+
+    def fake_run(cmd, check):
+        idx = cmd.index("-f")
+        with open(cmd[idx + 1], "wb") as f:
+            f.write(b"fake pg_dump output")
+        return None
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pg_dump")
+    # tmp_path is already cwd via the autouse reset_env fixture, so files land there
+
+    import importlib
+    import main
+    importlib.reload(main)
+
+    success = main.run_backup()
+    assert success is True
+
+
+def test_run_backup_uploads_to_both_when_mirror_configured(
+    monkeypatch, mock_s3, tmp_path, capsys
+):
+    """With MIRROR_* set, run_backup() uploads to BOTH primary-bucket and mirror-bucket."""
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake:fake@localhost/fake")
+    monkeypatch.setenv("R2_ENDPOINT", "")
+    monkeypatch.setenv("R2_BUCKET_NAME", "primary-bucket")
+    monkeypatch.setenv("R2_ACCESS_KEY", "test")
+    monkeypatch.setenv("R2_SECRET_KEY", "test")
+    monkeypatch.setenv("MIRROR_ENDPOINT", "")
+    monkeypatch.setenv("MIRROR_BUCKET_NAME", "mirror-bucket")
+    monkeypatch.setenv("MIRROR_ACCESS_KEY", "test")
+    monkeypatch.setenv("MIRROR_SECRET_KEY", "test")
+
+    def fake_run(cmd, check):
+        idx = cmd.index("-f")
+        with open(cmd[idx + 1], "wb") as f:
+            f.write(b"fake pg_dump output")
+        return None
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pg_dump")
+
+    import importlib
+    import main
+    importlib.reload(main)
+
+    success = main.run_backup()
+    assert success is True
+
+    primary_objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
+    mirror_objects = mock_s3.list_objects_v2(Bucket="mirror-bucket")
+    assert primary_objects["KeyCount"] == 1
+    assert mirror_objects["KeyCount"] == 1
+    assert primary_objects["Contents"][0]["Key"] == mirror_objects["Contents"][0]["Key"]
+
+
+def test_run_backup_returns_false_when_one_destination_fails(
+    monkeypatch, mock_s3, tmp_path, capsys
+):
+    """If R2 succeeds but mirror fails (bad endpoint), run_backup() returns False."""
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake:fake@localhost/fake")
+    monkeypatch.setenv("R2_ENDPOINT", "")
+    monkeypatch.setenv("R2_BUCKET_NAME", "primary-bucket")
+    monkeypatch.setenv("R2_ACCESS_KEY", "test")
+    monkeypatch.setenv("R2_SECRET_KEY", "test")
+    monkeypatch.setenv("MIRROR_ENDPOINT", "http://localhost:1")  # nothing on this port
+    monkeypatch.setenv("MIRROR_BUCKET_NAME", "mirror-bucket")
+    monkeypatch.setenv("MIRROR_ACCESS_KEY", "test")
+    monkeypatch.setenv("MIRROR_SECRET_KEY", "test")
+
+    def fake_run(cmd, check):
+        idx = cmd.index("-f")
+        with open(cmd[idx + 1], "wb") as f:
+            f.write(b"fake pg_dump output")
+        return None
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pg_dump")
+
+    import importlib
+    import main
+    importlib.reload(main)
+
+    success = main.run_backup()
+    assert success is False  # one destination failed → overall failure
+
+    # But R2 still got the upload (independent insurance)
+    primary_objects = mock_s3.list_objects_v2(Bucket="primary-bucket")
+    assert primary_objects["KeyCount"] == 1
