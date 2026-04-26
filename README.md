@@ -60,6 +60,7 @@ R2_ACCESS_KEY=          # Access key
 R2_SECRET_KEY=          # Secret key
 S3_REGION=us-east-1     # Required for AWS S3 (ignored by R2/MinIO)
 
+RUN_ONCE=false          # Run once and exit instead of scheduler (set true for Railway Cron)
 BACKUP_PASSWORD=        # Optional: enables 7z encryption
 BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
 ```
@@ -117,6 +118,26 @@ You can configure the backup schedule using **Railway Cron Jobs**:
 > If you use Railway Cron Jobs, the service will start once per execution.
 > In this setup, the service is expected to run a single backup and exit. Any internal scheduler should not be relied on.
 > Ensure the backup process exits cleanly after completion; otherwise, Railway will skip subsequent cron executions.
+
+---
+
+### 🔁 Cron Mode (Important)
+
+When using Railway Cron Jobs, you must enable one-shot mode:
+
+```env
+RUN_ONCE=true
+```
+
+This ensures the service:
+
+- runs a single backup  
+- exits cleanly after completion  
+
+If not set, the service will run continuously and future cron executions may be skipped.
+
+> `BACKUP_TIME` is only used when `RUN_ONCE=false` (daemon mode).  
+> When using Railway Cron (`RUN_ONCE=true`), scheduling is controlled by Railway.
 
 ---
 
