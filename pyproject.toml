@@ -3,11 +3,11 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pg-r2-backup"
+name = "pg-s3-multi-backup"
 version = "2.0.0"
-description = "PostgreSQL backup automation tool for S3-compatible storage"
+description = "PostgreSQL backup automation tool for one or more S3-compatible destinations"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 authors = [
   { name = "Aman" }
@@ -23,13 +23,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/BigDaddyAman/pg-r2-backup"
-Repository = "https://github.com/BigDaddyAman/pg-r2-backup"
-Issues = "https://github.com/BigDaddyAman/pg-r2-backup/issues"
+Homepage = "https://github.com/midego1/pg-s3-multi-backup"
+Repository = "https://github.com/midego1/pg-s3-multi-backup"
+Issues = "https://github.com/midego1/pg-s3-multi-backup/issues"
 
 [tool.setuptools]
 packages = ["cli"]
 py-modules = ["main"]
 
 [project.scripts]
-pg-r2-backup = "cli.cli:main"
+pg-s3-multi-backup = "cli.cli:main"
