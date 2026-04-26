@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pg-r2-backup"
-version = "1.0.7"
+version = "2.0.0"
 description = "PostgreSQL backup automation tool for S3-compatible storage"
 readme = "README.md"
 requires-python = ">=3.9"
