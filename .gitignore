@@ -21,9 +21,13 @@ wheels/
 *.egg
 
 # Virtual Environment
+.venv/
 venv/
 env/
 ENV/
+
+# Pytest
+.pytest_cache/
 
 # IDE
 .idea/
