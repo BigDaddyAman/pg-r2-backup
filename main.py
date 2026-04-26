@@ -187,7 +187,6 @@ def run_backup():
                     log("[INFO] Local backup deleted")                
     return success
 
-
 if __name__ == "__main__":
     log("[INFO] Starting backup process...")
 
