@@ -10,6 +10,7 @@ import schedule
 import py7zr
 import shutil
 import gzip
+import sys 
 
 load_dotenv(find_dotenv(usecwd=True), override=True)
 
@@ -30,6 +31,8 @@ BACKUP_PASSWORD = os.environ.get("BACKUP_PASSWORD")
 USE_PUBLIC_URL = os.environ.get("USE_PUBLIC_URL", "false").lower() == "true"
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "00:00")
 S3_REGION = os.environ.get("S3_REGION", "us-east-1")
+RUN_ONCE = os.environ.get("RUN_ONCE", "false").lower() == "true"
+
 
 def log(msg):
     print(msg, flush=True)
@@ -61,9 +64,10 @@ def gzip_compress(src):
     return dst
 
 def run_backup():
+    success = True
     if shutil.which("pg_dump") is None:
         log("[ERROR] pg_dump not found. Install postgresql-client.")
-        return
+        return False
 
     database_url = get_database_url()
     log(f"[INFO] Using {'public' if USE_PUBLIC_URL else 'private'} database URL")
@@ -113,10 +117,11 @@ def run_backup():
 
     except subprocess.CalledProcessError as e:
         log(f"[ERROR] Backup creation failed: {e}")
-        return
+        return False
     finally:
         if os.path.exists(backup_file):
             os.remove(backup_file)
+            
 
     ## Upload to R2
     if os.path.exists(compressed_file):
@@ -172,21 +177,28 @@ def run_backup():
 
     except Exception as e:
         log(f"[ERROR] R2 operation failed: {e}")
+        return False
     finally:
         if os.path.exists(compressed_file):
                 if KEEP_LOCAL_BACKUP:
                     log("[INFO] Keeping local backup (KEEP_LOCAL_BACKUP=true)")
                 else:
                     os.remove(compressed_file)
-                    log("[INFO] Local backup deleted")
+                    log("[INFO] Local backup deleted")                
+    return success
+
 
 if __name__ == "__main__":
-    log("[INFO] Starting backup scheduler...")
+    log("[INFO] Starting backup process...")
+
+    success = run_backup()
+
+    if RUN_ONCE:
+        sys.exit(0 if success else 1)
+
     log(f"[INFO] Scheduled backup time: {BACKUP_TIME} UTC")
 
     schedule.every().day.at(BACKUP_TIME).do(run_backup)
-
-    run_backup()
 
     while True:
         schedule.run_pending()
