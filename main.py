@@ -9,7 +9,6 @@ import time
 import schedule
 import py7zr
 import shutil
-import gzip
 import sys 
 
 load_dotenv(find_dotenv(usecwd=True), override=True)
@@ -165,8 +164,10 @@ def run_backup():
                 dump_proc.stdout.close()
 
                 gzip_proc.communicate()
+                dump_return = dump_proc.wait()
+                gzip_return = gzip_proc.wait()
 
-                if dump_proc.wait() != 0:
+                if dump_return != 0:
                     raise subprocess.CalledProcessError(
                         dump_proc.returncode,
                         dump_cmd
@@ -220,7 +221,9 @@ def run_backup():
                 retries={
                     "max_attempts": 5,
                     "mode": "standard"
-                }
+                },
+                connect_timeout=30,
+                read_timeout=300
             )
         )
 
@@ -301,12 +304,16 @@ def run_backup():
         log(f"[ERROR] R2 operation failed: {e}")
         return False
     finally:
-        if os.path.exists(compressed_file):
-                if KEEP_LOCAL_BACKUP:
-                    log("[INFO] Keeping local backup (KEEP_LOCAL_BACKUP=true)")
-                else:
-                    os.remove(compressed_file)
-                    log("[INFO] Local backup deleted")                
+        if (compressed_file and os.path.exists(compressed_file)
+        ):
+            if KEEP_LOCAL_BACKUP:
+                log("[INFO] Keeping local backup "
+                    "(KEEP_LOCAL_BACKUP=true)"
+                )
+            else:
+                os.remove(compressed_file)
+                log("[INFO] Local backup deleted")
+                              
     return success
 
 if __name__ == "__main__":
