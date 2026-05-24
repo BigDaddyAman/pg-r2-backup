@@ -1,4 +1,4 @@
-boto3==1.42.96 
+boto3==1.43.14 
 psycopg2-binary==2.9.12 
 python-dotenv==1.2.1
 py7zr==1.1.0
