@@ -58,10 +58,6 @@ def get_database_url():
 
 def run_backup():
     success = True
-<<<<<<< HEAD
-=======
-
->>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     if shutil.which("pg_dump") is None:
         log("[ERROR] pg_dump not found. Install postgresql-client.")
         return False
@@ -187,14 +183,6 @@ def run_backup():
     except subprocess.CalledProcessError as e:
         log(f"[ERROR] Backup creation failed: {e}")
         return False
-<<<<<<< HEAD
-=======
-
-    except Exception as e:
-        log(f"[ERROR] Unexpected backup error: {e}")
-        return False
-
->>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     finally:
 
         if (
@@ -311,7 +299,6 @@ def run_backup():
     except Exception as e:
 
         log(f"[ERROR] R2 operation failed: {e}")
-<<<<<<< HEAD
         return False
     finally:
         if os.path.exists(compressed_file):
@@ -320,31 +307,6 @@ def run_backup():
                 else:
                     os.remove(compressed_file)
                     log("[INFO] Local backup deleted")                
-=======
-
-        return False
-
-    finally:
-
-        if (
-            compressed_file
-            and os.path.exists(compressed_file)
-        ):
-
-            if KEEP_LOCAL_BACKUP:
-
-                log(
-                    "[INFO] Keeping local backup "
-                    "(KEEP_LOCAL_BACKUP=true)"
-                )
-
-            else:
-
-                os.remove(compressed_file)
-
-                log("[INFO] Local backup deleted")
-
->>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     return success
 
 if __name__ == "__main__":
