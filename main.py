@@ -56,20 +56,18 @@ def get_database_url():
         raise ValueError("[ERROR] DATABASE_URL not set!")
     return DATABASE_URL
 
-def gzip_compress(src):
-    dst = src + ".gz"
-    with open(src, "rb") as f_in:
-        with gzip.open(dst, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    return dst
-
 def run_backup():
     success = True
+<<<<<<< HEAD
+=======
+
+>>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     if shutil.which("pg_dump") is None:
         log("[ERROR] pg_dump not found. Install postgresql-client.")
         return False
 
     database_url = get_database_url()
+
     log(f"[INFO] Using {'public' if USE_PUBLIC_URL else 'private'} database URL")
 
     format_map = {
@@ -79,56 +77,150 @@ def run_backup():
         "custom": ("c", "dump"),
         "tar": ("t", "tar")
     }
-    pg_format, ext = format_map.get(DUMP_FORMAT.lower(), ("c", "dump"))
+
+    pg_format, ext = format_map.get(
+        DUMP_FORMAT.lower(),
+        ("c", "dump")
+    )
+
+    is_custom_format = pg_format == "c"
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
     backup_file = f"{FILENAME_PREFIX}_{timestamp}.{ext}"
 
     compressed_file = (
-        f"{backup_file}.7z" if BACKUP_PASSWORD else f"{backup_file}.gz"
+        f"{backup_file}.7z"
+        if BACKUP_PASSWORD
+        else (
+            backup_file
+            if is_custom_format
+            else f"{backup_file}.gz"
+        )
     )
 
     compressed_file_r2 = f"{BACKUP_PREFIX}{compressed_file}"
 
-    ## Create backup
     try:
-        log(f"[INFO] Creating backup {backup_file}")
+        log(f"[INFO] Creating backup {compressed_file}")
 
         dump_cmd = [
             "pg_dump",
             f"--dbname={database_url}",
             "-F", pg_format,
             "--no-owner",
-            "--no-acl",
-            "-f", backup_file
+            "--no-acl"
         ]
 
-        subprocess.run(dump_cmd, check=True)
-
+        #
+        # ENCRYPTED BACKUP
+        #
         if BACKUP_PASSWORD:
+
+            dump_cmd.extend(["-f", backup_file])
+
+            subprocess.run(dump_cmd, check=True)
+
             log("[INFO] Encrypting backup with 7z...")
-            with py7zr.SevenZipFile(compressed_file, "w", password=BACKUP_PASSWORD) as archive:
+
+            with py7zr.SevenZipFile(
+                compressed_file,
+                "w",
+                password=BACKUP_PASSWORD
+            ) as archive:
                 archive.write(backup_file)
+
             log("[SUCCESS] Backup encrypted successfully")
+
+        #
+        # CUSTOM FORMAT (pg_dump internal compression)
+        #
+        elif is_custom_format:
+
+            dump_cmd.extend([
+                "-Z", "6",
+                "-f", compressed_file
+            ])
+
+            subprocess.run(dump_cmd, check=True)
+
+            log("[SUCCESS] PostgreSQL compressed backup created")
+
+        #
+        # SQL/TAR STREAMING GZIP
+        #
         else:
-            log("[INFO] Compressing backup with gzip...")
-            gzip_compress(backup_file)
-            log("[SUCCESS] Backup compressed successfully")
+
+            log("[INFO] Streaming pg_dump to gzip...")
+
+            with open(compressed_file, "wb") as f_out:
+
+                dump_proc = subprocess.Popen(
+                    dump_cmd,
+                    stdout=subprocess.PIPE
+                )
+
+                gzip_proc = subprocess.Popen(
+                    ["gzip"],
+                    stdin=dump_proc.stdout,
+                    stdout=f_out
+                )
+
+                dump_proc.stdout.close()
+
+                gzip_proc.communicate()
+
+                if dump_proc.wait() != 0:
+                    raise subprocess.CalledProcessError(
+                        dump_proc.returncode,
+                        dump_cmd
+                    )
+
+                if gzip_proc.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        gzip_proc.returncode,
+                        "gzip"
+                    )
+
+            log("[SUCCESS] Backup streamed and compressed")
 
     except subprocess.CalledProcessError as e:
         log(f"[ERROR] Backup creation failed: {e}")
         return False
+<<<<<<< HEAD
+=======
+
+    except Exception as e:
+        log(f"[ERROR] Unexpected backup error: {e}")
+        return False
+
+>>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     finally:
-        if os.path.exists(backup_file):
+
+        if (
+            BACKUP_PASSWORD
+            and os.path.exists(backup_file)
+        ):
             os.remove(backup_file)
             
 
-    ## Upload to R2
-    if os.path.exists(compressed_file):
-        size = os.path.getsize(compressed_file)
-        log(f"[INFO] Final backup size: {size / 1024 / 1024:.2f} MB")
+    #
+    # FILE SIZE
+    #
+    if compressed_file and os.path.exists(compressed_file):
 
+        size = os.path.getsize(compressed_file)
+
+        log(
+            f"[INFO] Final backup size: "
+            f"{size / 1024 / 1024:.2f} MB"
+        )
+
+    #
+    # UPLOAD TO R2
+    #
     try:
+
         client = boto3.client(
             "s3",
             endpoint_url=R2_ENDPOINT,
@@ -136,47 +228,90 @@ def run_backup():
             aws_secret_access_key=R2_SECRET_KEY,
             region_name=S3_REGION,
             config=Config(
-                s3={"addressing_style": "path"}
+                s3={"addressing_style": "path"},
+                retries={
+                    "max_attempts": 5,
+                    "mode": "standard"
+                }
             )
         )
 
-        config = TransferConfig(
+        transfer_config = TransferConfig(
             multipart_threshold=8 * 1024 * 1024,
             multipart_chunksize=8 * 1024 * 1024,
             max_concurrency=4,
             use_threads=True
         )
 
+        log("[INFO] Uploading backup to R2...")
+
         client.upload_file(
             compressed_file,
             R2_BUCKET_NAME,
             compressed_file_r2,
-            Config=config
+            Config=transfer_config
         )
 
-        log(f"[SUCCESS] Backup uploaded: {compressed_file_r2}")
-
-        objects = client.list_objects_v2(
+        #
+        # VERIFY UPLOAD
+        #
+        remote = client.head_object(
             Bucket=R2_BUCKET_NAME,
-            Prefix=BACKUP_PREFIX
+            Key=compressed_file_r2
         )
 
-        if "Contents" in objects:
-            backups = sorted(
-                objects["Contents"],
-                key=lambda x: x["LastModified"],
-                reverse=True
+        remote_size = remote["ContentLength"]
+        local_size = os.path.getsize(compressed_file)
+
+        if remote_size != local_size:
+            raise Exception(
+                "Uploaded file size mismatch!"
             )
 
-            for obj in backups[MAX_BACKUPS:]:
-                client.delete_object(
-                    Bucket=R2_BUCKET_NAME,
-                    Key=obj["Key"]
-                )
-                log(f"[INFO] Deleted old backup: {obj['Key']}")
+        log(
+            f"[SUCCESS] Backup uploaded: "
+            f"{compressed_file_r2}"
+        )
+
+        #
+        # CLEAN OLD BACKUPS
+        #
+        paginator = client.get_paginator(
+            "list_objects_v2"
+        )
+
+        backups = []
+
+        for page in paginator.paginate(
+            Bucket=R2_BUCKET_NAME,
+            Prefix=BACKUP_PREFIX
+        ):
+
+            if "Contents" in page:
+                backups.extend(page["Contents"])
+
+        backups = sorted(
+            backups,
+            key=lambda x: x["LastModified"],
+            reverse=True
+        )
+
+        for obj in backups[MAX_BACKUPS:]:
+
+            client.delete_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=obj["Key"]
+            )
+
+            log(
+                f"[INFO] Deleted old backup: "
+                f"{obj['Key']}"
+            )
 
     except Exception as e:
+
         log(f"[ERROR] R2 operation failed: {e}")
+<<<<<<< HEAD
         return False
     finally:
         if os.path.exists(compressed_file):
@@ -185,6 +320,31 @@ def run_backup():
                 else:
                     os.remove(compressed_file)
                     log("[INFO] Local backup deleted")                
+=======
+
+        return False
+
+    finally:
+
+        if (
+            compressed_file
+            and os.path.exists(compressed_file)
+        ):
+
+            if KEEP_LOCAL_BACKUP:
+
+                log(
+                    "[INFO] Keeping local backup "
+                    "(KEEP_LOCAL_BACKUP=true)"
+                )
+
+            else:
+
+                os.remove(compressed_file)
+
+                log("[INFO] Local backup deleted")
+
+>>>>>>> 29177e2 (Optimize PostgreSQL backup pipeline)
     return success
 
 if __name__ == "__main__":
