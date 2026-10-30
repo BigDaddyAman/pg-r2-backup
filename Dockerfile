@@ -26,7 +26,7 @@ RUN apt-get update && \
 
 COPY --from=builder /install /usr/local
 
-COPY main.py /app/main.py
+COPY main.py config.py /app/
 
 WORKDIR /app
 

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pg-r2-backup"
-version = "1.0.8"
+version = "1.0.10"
 description = "PostgreSQL backup automation tool for S3-compatible storage"
 readme = "README.md"
 requires-python = ">=3.9"
 
 authors = [
-  { name = "Aman" }
+    { name = "Aman" }
 ]
 
 license = "MIT"
@@ -18,8 +18,9 @@ license = "MIT"
 dependencies = [
     "boto3",
     "python-dotenv",
-    "schedule",
-    "py7zr"
+    "schedule>=1.2.2",
+    "py7zr",
+    "filelock"
 ]
 
 [project.urls]
@@ -29,7 +30,7 @@ Issues = "https://github.com/BigDaddyAman/pg-r2-backup/issues"
 
 [tool.setuptools]
 packages = ["cli"]
-py-modules = ["main"]
+py-modules = ["main", "config"]
 
 [project.scripts]
 pg-r2-backup = "cli.cli:main"

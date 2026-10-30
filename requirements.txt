@@ -1,5 +1,6 @@
-boto3==1.43.14 
-psycopg2-binary==2.9.12 
-python-dotenv==1.2.1
-py7zr==1.1.0
+boto3==1.43.122
+psycopg2-binary==2.9.13
+python-dotenv==1.2.4
+py7zr==1.1.4
 schedule==1.2.2
+filelock==3.32.6

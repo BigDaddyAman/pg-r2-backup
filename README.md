@@ -17,11 +17,11 @@ It is designed to run reliably on **PaaS platforms**, with first-class support f
 ## ✨ Features
 
 - 📦 **Automated Backups** — scheduled daily or hourly PostgreSQL backups  
-- 🔐 **Optional Encryption** — PostgreSQL native compression, gzip streaming, or optional 7z password encryption
+- 🔐 **Optional Encryption** — gzip compression or 7z encryption with password  
 - ☁️ **Cloudflare R2 Integration** — seamless S3-compatible storage support
 - 🧹 **Retention Policy** — automatically delete old backups  
 - 🔗 **Flexible Database URLs** — supports private and public PostgreSQL connection URLs
-- ⚡ **Optimized Performance** — streaming compression, PostgreSQL native compression, and multipart S3 uploads
+- ⚡ **Optimized Performance** — parallel pg_dump and multipart S3 uploads
 - 🐳 **Docker Ready** — portable, lightweight container  
 - 🚀 **Deployment Templates** — no fork required for normal usage
 - 🪣 **S3-Compatible Storage** — works with R2, AWS S3, Wasabi, B2, MinIO
@@ -45,28 +45,37 @@ It is designed to run reliably on **PaaS platforms**, with first-class support f
 ## 🔧 Environment Variables (S3-Compatible)
 
 ```env
-DATABASE_URL=           # PostgreSQL database URL (private)
+# Database
+DATABASE_URL=           # Private PostgreSQL URL
 DATABASE_PUBLIC_URL=    # Public PostgreSQL URL (optional)
-USE_PUBLIC_URL=false    # Set true to use DATABASE_PUBLIC_URL
+USE_PUBLIC_URL=false    # true = public, false = private
 
+# Backup
+RUN_MODE=railway        # railway | cli | daemon
 DUMP_FORMAT=dump        # sql | plain | dump | custom | tar
-FILENAME_PREFIX=backup  # Backup filename prefix
-MAX_BACKUPS=7           # Number of backups to retain
-KEEP_LOCAL_BACKUP=false # Keep backup file locally after upload (not recommended on PaaS)
+FILENAME_PREFIX=backup
+BACKUP_PREFIX=postgres-backups/
+MAX_BACKUPS=7
+KEEP_LOCAL_BACKUP=false
 
-R2_ENDPOINT=            # S3 endpoint URL
-R2_BUCKET_NAME=         # Bucket name
-R2_ACCESS_KEY=          # Access key
-R2_SECRET_KEY=          # Secret key
-S3_REGION=us-east-1     # Required for AWS S3 (ignored by R2/MinIO)
+# S3-compatible storage
+R2_ENDPOINT=
+R2_BUCKET_NAME=
+R2_ACCESS_KEY=
+R2_SECRET_KEY=
+S3_REGION=us-east-1
 
-RUN_ONCE=false          # Run once and exit instead of scheduler (set true for Railway Cron)
-BACKUP_PASSWORD=        # Optional: enables 7z encryption
-BACKUP_TIME=00:00       # Daily backup time (UTC, HH:MM)
+# Compression
+BACKUP_PASSWORD=        # Optional: enables encrypted 7z
+
+# Daemon scheduling (UTC)
+BACKUP_TIME=00:00
 ```
+`BACKUP_PREFIX` isolates backups in a folder within your bucket. `FILENAME_PREFIX` controls the generated backup filename.
 
-> Variable names use `R2_*` for historical reasons, but **any S3-compatible provider** can be used by changing the endpoint and credentials.
-> For AWS S3 users: ensure `S3_REGION` matches your bucket’s region.
+Variable names use `R2_*` for historical reasons, but any S3-compatible provider can be used by changing the endpoint and credentials.
+
+For AWS S3 users, ensure `S3_REGION` matches your bucket's region.
 
 ---
 
@@ -121,23 +130,21 @@ You can configure the backup schedule using **Railway Cron Jobs**:
 
 ---
 
-### 🔁 Cron Mode (Important)
+### Railway Cron Mode
+For Railway Cron Jobs, configure:
 
-When using Railway Cron Jobs, you must enable one-shot mode:
-
-```env
-RUN_ONCE=true
 ```
+RUN_MODE=railway
+```
+Railway controls when the service starts.
 
-This ensures the service:
+Each execution:
 
-- runs a single backup  
-- exits cleanly after completion  
-
-If not set, the service will run continuously and future cron executions may be skipped.
-
-> `BACKUP_TIME` is only used when `RUN_ONCE=false` (daemon mode).  
-> When using Railway Cron (`RUN_ONCE=true`), scheduling is controlled by Railway.
+- Runs one backup.
+- Uploads the backup to S3-compatible storage.
+- Applies the retention policy.
+- Exits after completion.
+Do not use `RUN_MODE=daemon` with Railway Cron. Daemon mode is intended for a continuously running service.
 
 ---
 
@@ -161,10 +168,47 @@ It can run on **any platform** that supports:
 
 > *Windows is supported when `pg_dump` is installed and available in PATH.*
 
+### Supported Run Modes
+pg-r2-backup supports three operating modes:
+
+| Mode | Description |
+|------|-------------|
+| `railway` | Runs one backup and exits. Designed for Railway Cron. |
+| `cli` | Runs one backup and exits. Designed for manual execution. |
+| `daemon` | Runs daily according to `BACKUP_TIME` (UTC). |
+
+#### Railway Mode
+
+```
+RUN_MODE=railway
+```
+Use Railway Cron to trigger backups.
+
+#### CLI Mode
+
+```
+RUN_MODE=cli
+```
+Run one backup manually:
+
+```
+python main.py
+```
+
+#### Daemon Mode
+
+```
+RUN_MODE=daemon
+BACKUP_TIME=16:00
+```
+The application stays running and performs backups daily at the configured UTC time.
+
+Example: `BACKUP_TIME=16:00` means midnight in Malaysia (UTC+8).
+
 ### Local Requirements
 
 - Python 3.9+
-- PostgreSQL client tools (`pg_dump`)
+- PostgreSQL client tools (`pg_dump` and `pg_restore`)
 - pip
 
 ### Run Manually (Local)
@@ -187,25 +231,6 @@ docker run --env-file .env postgres-to-r2-backup
 
 > All scheduling uses **UTC** by default (e.g. Malaysia UTC+8 → set `BACKUP_TIME=16:00` for midnight).
 
-### Run from Prebuilt Docker Image
-
-If you downloaded a prebuilt Docker image archive (`.tar` or `.tar.gz`), you can run it without building locally:
-
-```bash
-# Extract the archive (if compressed)
-tar -xzf postgres-to-r2-backup_v1.0.6.tar.gz
-
-# Load the image into Docker
-docker load -i postgres-to-r2-backup_v1.0.6.tar
-
-# Run the container
-docker run --env-file .env postgres-to-r2-backup:v1.0.6
-```
-
-> Prebuilt images are architecture-specific (amd64 / arm64).
-
----
-
 ## 🧰 Using the CLI (Global Installation)
 
 This project can also be used as a standalone CLI tool, installable via pip, in addition to running as a Railway or Docker service.
@@ -219,7 +244,7 @@ pip install pg-r2-backup
 ### Requirements
 
 - Python 3.9+
-- PostgreSQL client tools (`pg_dump`) installed and available in PATH
+- PostgreSQL client tools (`pg_dump` and `pg_restore`) installed and available in PATH
 
 ### Quick Start (CLI)
 
@@ -244,11 +269,11 @@ pg-r2-backup --version
 ```
 
 ### Environment Variable Resolution (CLI)
+The application loads environment variables from `.env`.
 
-When running via the CLI, environment variables are resolved in the following order:
+When `override=true` is enabled, `.env` values take precedence over existing system environment variables.
 
-1. A `.env` file in the current working directory (or parent directory)
-2. System environment variables
+The `.env` file is discovered from the current working directory or its parent directories.
 
 This allows different folders to maintain separate backup configurations.
 
