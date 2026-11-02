@@ -4,3 +4,4 @@ python-dotenv==1.2.4
 py7zr==1.1.4
 schedule==1.2.2
 filelock==3.32.6
+pytz==2026.5
