@@ -12,6 +12,7 @@ import py7zr
 import shutil
 import gzip
 import sys
+import hashlib
 
 from filelock import FileLock, Timeout
 
@@ -60,6 +61,15 @@ def gzip_compress(src):
         with gzip.open(dst, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
     return dst
+
+def sha256_of(path, chunk_size=1024 * 1024):
+    digest = hashlib.sha256()
+
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            digest.update(chunk)
+
+    return digest.hexdigest()
 
 def acquire_backup_lock():
     lock = FileLock(".backup.lock", timeout=0)
@@ -139,6 +149,9 @@ def run_backup():
         size = os.path.getsize(compressed_file)
         log(f"[INFO] Final backup size: {size / 1024 / 1024:.2f} MB")
 
+        local_sha256 = sha256_of(compressed_file)
+        log(f"[INFO] SHA-256: {local_sha256}")
+
         client = boto3.client(
             "s3",
             endpoint_url=R2_ENDPOINT,
@@ -166,7 +179,10 @@ def run_backup():
             compressed_file,
             R2_BUCKET_NAME,
             compressed_file_r2,
-            ExtraArgs={"Metadata": {"managed-by": "postgres-backup-app"}},
+            ExtraArgs={"Metadata": {
+                "managed-by": "postgres-backup-app",
+                "sha256": local_sha256
+            }},
             Config=transfer_config
         )
 
@@ -178,8 +194,16 @@ def run_backup():
         if remote.get("Metadata", {}).get("managed-by") != "postgres-backup-app":
             raise ValueError("Backup ownership metadata verification failed.")
 
+        remote_sha256 = remote.get("Metadata", {}).get("sha256")
+
+        if remote_sha256 != local_sha256:
+            raise ValueError("Uploaded checksum metadata mismatch.")
+
         upload_success = True
-        log(f"[SUCCESS] Backup uploaded: {compressed_file_r2}")
+        log(
+            f"[SUCCESS] Backup uploaded: {compressed_file_r2} "
+            f"| size={size} bytes | sha256={local_sha256}"
+        )
 
         log("[INFO] Starting safe backup retention...")
 
