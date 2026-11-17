@@ -1,5 +1,5 @@
-
 import os
+import pytz
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(usecwd=True), override=True)
@@ -51,6 +51,8 @@ BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD")
 
 BACKUP_TIME = os.getenv("BACKUP_TIME", "00:00").strip()
 
+TIMEZONE = os.getenv("TIMEZONE", "UTC").strip()
+
 RUN_MODE = os.getenv(
     "RUN_MODE",
     "daemon"
@@ -62,6 +64,13 @@ if RUN_MODE not in VALID_RUN_MODES:
     raise ValueError(
         f"Invalid RUN_MODE: {RUN_MODE}. "
         f"Choose from: {', '.join(sorted(VALID_RUN_MODES))}"
+    )
+
+if TIMEZONE not in pytz.all_timezones_set:
+    raise ValueError(
+        f"Invalid TIMEZONE: '{TIMEZONE}'. "
+        "Use a valid IANA timezone such as "
+        "'UTC', 'Asia/Kuala_Lumpur', or 'Europe/London'."
     )
 
 if MAX_BACKUPS < 1:

@@ -4,6 +4,7 @@ import os
 import sys
 import textwrap
 import importlib.metadata
+import pytz
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -59,6 +60,17 @@ def doctor():
     print(f"\nDatabase URL mode : {'public' if use_public else 'private'}")
     print(f"Database variable : {database_var}")
 
+    timezone_name = os.environ.get("TIMEZONE", "UTC").strip()
+
+    if timezone_name in pytz.all_timezones_set:
+        print(f"[OK] Timezone: {timezone_name}")
+    else:
+        print(
+            f"[FAIL] Invalid TIMEZONE: '{timezone_name}'. "
+            "Use a valid IANA timezone."
+        )
+        failed = True
+
     if os.environ.get("BACKUP_PASSWORD"):
         if shutil.which("7z"):
             print("Compression       : 7z (encrypted)")
@@ -91,6 +103,7 @@ def config_show():
         "MAX_BACKUPS": os.environ.get("MAX_BACKUPS", "7"),
         "KEEP_LOCAL_BACKUP": os.environ.get("KEEP_LOCAL_BACKUP", "false"),
         "BACKUP_TIME": os.environ.get("BACKUP_TIME", "00:00"),
+        "TIMEZONE": os.environ.get("TIMEZONE", "UTC").strip(),
         "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", ""),
         "R2_ENDPOINT": os.environ.get("R2_ENDPOINT", ""),
         "R2_ACCESS_KEY": "********" if os.environ.get("R2_ACCESS_KEY") else "",
@@ -120,6 +133,13 @@ def schedule_info():
     print(textwrap.dedent("""
     pg-r2-backup scheduling
 
+    Internal daemon:
+      RUN_MODE=daemon
+      BACKUP_TIME=03:00
+      TIMEZONE=Asia/Kuala_Lumpur
+
+      TIMEZONE is optional (default: UTC).
+
     Linux / macOS (cron):
       0 0 * * * pg-r2-backup run
 
@@ -129,7 +149,11 @@ def schedule_info():
       Start in: folder containing .env (working directory)
 
     Railway / Docker:
-      Use the platform scheduler
+      Use the platform scheduler when configured externally.
+
+    Note:
+      TIMEZONE only controls internal daemon scheduling.
+      External schedulers use their own timezone settings.
     """).strip())
 
 def main():

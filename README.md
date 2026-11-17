@@ -68,8 +68,14 @@ S3_REGION=us-east-1
 # Compression
 BACKUP_PASSWORD=        # Optional: enables encrypted 7z
 
-# Daemon scheduling (UTC)
+# Daemon scheduling (RUN_MODE=daemon only)
+# BACKUP_TIME uses 24-hour HH:MM format (default: 00:00)
 BACKUP_TIME=00:00
+
+TIMEZONE=Asia/Kuala_Lumpur
+# Optional timezone (default: UTC)
+# Uses valid IANA timezone names supported by pytz
+# Examples: Asia/Kuala_Lumpur, Europe/London, America/New_York
 ```
 `BACKUP_PREFIX` isolates backups in a folder within your bucket. `FILENAME_PREFIX` controls the generated backup filename.
 
@@ -197,13 +203,40 @@ python main.py
 
 #### Daemon Mode
 
-```
-RUN_MODE=daemon
-BACKUP_TIME=16:00
-```
-The application stays running and performs backups daily at the configured UTC time.
+Daemon mode runs continuously and performs backups daily at the configured time.
 
-Example: `BACKUP_TIME=16:00` means midnight in Malaysia (UTC+8).
+```env
+RUN_MODE=daemon
+BACKUP_TIME=00:00
+```
+
+By default, scheduling uses **UTC**.
+
+To schedule backups in your local timezone, set the optional `TIMEZONE` environment variable:
+
+```env
+RUN_MODE=daemon
+BACKUP_TIME=00:00
+TIMEZONE=Asia/Kuala_Lumpur
+```
+
+This example runs backups daily at **12:00 AM Malaysia time (UTC+8)**.
+
+You can use any valid IANA timezone supported by `pytz`, including:
+
+- `UTC`
+- `Asia/Kuala_Lumpur`
+- `Asia/Singapore`
+- `Asia/Tokyo`
+- `Europe/London`
+- `America/New_York`
+- `Australia/Sydney`
+
+If `TIMEZONE` is omitted, the application automatically uses `UTC`.
+
+**Note:** The timezone setting only affects internal daemon scheduling. External schedulers such as Railway Cron, Linux cron, and Windows Task Scheduler use their own timezone settings.
+
+Backup filenames continue to use UTC timestamps for consistency.
 
 ### Local Requirements
 
@@ -229,7 +262,7 @@ docker run --env-file .env postgres-to-r2-backup
 
 > Ensure the container is allowed to run continuously when not using an external cron scheduler.
 
-> All scheduling uses **UTC** by default (e.g. Malaysia UTC+8 → set `BACKUP_TIME=16:00` for midnight).
+> **Scheduling:** Daemon mode uses **UTC by default**, but supports custom timezones through the optional `TIMEZONE` environment variable. For example, set `TIMEZONE=Asia/Kuala_Lumpur` and `BACKUP_TIME=00:00` to schedule daily backups at midnight Malaysia time (UTC+8). External schedulers, such as Railway Cron, use their own timezone settings.
 
 ## 🧰 Using the CLI (Global Installation)
 
