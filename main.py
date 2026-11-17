@@ -31,6 +31,7 @@ from config import (
     BACKUP_PASSWORD,
     USE_PUBLIC_URL,
     BACKUP_TIME,
+    TIMEZONE,
     S3_REGION,
     RUN_MODE,
 )
@@ -333,9 +334,15 @@ def scheduled_backup():
 
 
 def run_daemon():
-    log(f"[INFO] Daemon mode: scheduled daily at {BACKUP_TIME} UTC")
+    log(
+        f"[INFO] Daemon mode: scheduled daily "
+        f"at {BACKUP_TIME} ({TIMEZONE})"
+    )
 
-    schedule.every().day.at(BACKUP_TIME, "UTC").do(scheduled_backup)
+    schedule.every().day.at(
+        BACKUP_TIME,
+        TIMEZONE
+    ).do(scheduled_backup)
 
     while True:
         try:
