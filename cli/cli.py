@@ -60,7 +60,7 @@ def doctor():
     print(f"\nDatabase URL mode : {'public' if use_public else 'private'}")
     print(f"Database variable : {database_var}")
 
-    timezone_name = os.environ.get("TIMEZONE", "UTC").strip()
+    timezone_name = (os.getenv("TIMEZONE") or "UTC").strip() or "UTC"
 
     if timezone_name in pytz.all_timezones_set:
         print(f"[OK] Timezone: {timezone_name}")
@@ -95,15 +95,15 @@ def config_show():
     print("pg-r2-backup config\n")
 
     config = {
-        "RUN_MODE": os.environ.get("RUN_MODE", "railway"),
+        "RUN_MODE": os.environ.get("RUN_MODE", "daemon"),
         "USE_PUBLIC_URL": os.environ.get("USE_PUBLIC_URL", "false"),
         "DUMP_FORMAT": os.environ.get("DUMP_FORMAT", "dump"),
         "FILENAME_PREFIX": os.environ.get("FILENAME_PREFIX", "backup"),
         "BACKUP_PREFIX": os.environ.get("BACKUP_PREFIX", "postgres-backups/"),
         "MAX_BACKUPS": os.environ.get("MAX_BACKUPS", "7"),
         "KEEP_LOCAL_BACKUP": os.environ.get("KEEP_LOCAL_BACKUP", "false"),
-        "BACKUP_TIME": os.environ.get("BACKUP_TIME", "00:00"),
-        "TIMEZONE": os.environ.get("TIMEZONE", "UTC").strip(),
+        "BACKUP_TIME": (os.getenv("BACKUP_TIME") or "00:00").strip() or "00:00",
+        "TIMEZONE": (os.getenv("TIMEZONE") or "UTC").strip() or "UTC",
         "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", ""),
         "R2_ENDPOINT": os.environ.get("R2_ENDPOINT", ""),
         "R2_ACCESS_KEY": "********" if os.environ.get("R2_ACCESS_KEY") else "",

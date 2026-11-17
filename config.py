@@ -49,9 +49,9 @@ DUMP_FORMAT = os.getenv(
 
 BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD")
 
-BACKUP_TIME = os.getenv("BACKUP_TIME", "00:00").strip()
+BACKUP_TIME = (os.getenv("BACKUP_TIME") or "00:00").strip() or "00:00"
 
-TIMEZONE = os.getenv("TIMEZONE", "UTC").strip()
+TIMEZONE = (os.getenv("TIMEZONE") or "UTC").strip() or "UTC"
 
 RUN_MODE = os.getenv(
     "RUN_MODE",
